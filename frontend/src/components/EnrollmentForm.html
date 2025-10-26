@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SVSHS Online Application</title>
+  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="../css/index.css">
+</head>
+
+<body>
+  <!-- HEADER -->
+  <header>
+    <div class="logo-text">SVSHS Online Application</div>
+    <nav>
+      <ul>
+        <li><a href="#" class="active">Home</a></li>
+        <li><a href="#">Application</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero-section">
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <h1>Welcome to <span>Southville 8B Senior High School</span></h1>
+      <p>SVSHS Senior High School Online Application Portal</p>
+      <a href="#apply">Apply Now →</a>
+    </div>
+  </section>
+
+  <!-- FORM CONTAINER -->
+  <section id="apply" class="form-section">
+    <div class="form-container">
+      <h1>Student Registration</h1>
+      <p class="subtitle">Complete the steps below to create your account and choose your strand.</p>
+
+      <!-- STEPPER -->
+      <div class="stepper">
+        <div class="step active">
+          <div class="icon"><i class="fas fa-hand-sparkles"></i></div>
+          <p>Welcome</p>
+        </div>
+
+        <div class="step pending">
+          <div class="icon"><i class="fas fa-user"></i></div>
+          <p>Application Account</p>
+        </div>
+
+        <div class="step pending">
+          <div class="icon"><i class="fas fa-id-card"></i></div>
+          <p>Application Profile</p>
+        </div>
+
+        <div class="step pending">
+          <div class="icon"><i class="fas fa-book"></i></div>
+          <p>Educational Profile</p>
+        </div>
+
+        <div class="step pending">
+          <div class="icon"><i class="fas fa-users"></i></div>
+          <p>Family Profile</p>
+        </div>
+
+        <div class="step pending">
+          <div class="icon"><i class="fas fa-upload"></i></div>
+          <p>Upload Requirements</p>
+        </div>
+
+        <div class="step pending">
+          <div class="icon"><i class="fas fa-check-circle"></i></div>
+          <p>Review</p>
+        </div>
+      </div>
+
+      <!-- WELCOME CONTENT -->
+     <div class="form-step active">
+        <div class="welcome-box">
+          <h3>Welcome to the SVSHS Online Application for Admission!</h3>
+          <p>To proceed with your application, please do the following:</p>
+          <ol>
+            <li>Be ready to upload your 2" x 2" photo with white background and any of the following:
+              <ul>
+                <li>For Grade 12 graduates: Grade 12 report card</li>
+                <li>For graduates of Non-Formal Education: PEPT/ALS rating</li>
+                <li>For current Grade 12 students: Grade 11 report card</li>
+                <li>For college transferees: Transcript of records or Certification of grades</li>
+                <li>For degree holders: Transcript of records</li>
+                <li>For cross-enrollees: Permit to cross-enroll</li>
+              </ul>
+            </li>
+            <li>Review all information you entered before clicking Submit.</li>
+            <li>Make sure to COPY/TAKE A SCREENSHOT of your reference number. You’ll use this later.</li>
+          </ol>
+        </div>
+      </div>
+
+            <!-- ✅ Registration Form -->
+      <form id="regForm" action="../php/register.php" method="POST" enctype="multipart/form-data">
+        
+        <!-- Step 1 -->
+        <div class="form-step">
+          <div class="form-group">
+            <label>Email *</label>
+            <input type="email" name="email" required>
+          </div>
+          <div class="form-group">
+            <label>Mobile Number *</label>
+            <input type="tel" name="phone" placeholder="09XXXXXXXXX" pattern="^0\d{10}$" maxlength="11" required>
+          </div>
+          <div class="form-group">
+            <label>Password *</label>
+            <input type="password" name="password" minlength="8" required>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="form-step">
+          <div class="form-grid">
+            <h3 style="grid-column: 1 / -1;">Student Information</h3>
+
+            <div class="form-group"><label>First Name *</label><input type="text" name="firstname" required></div>
+            <div class="form-group"><label>Last Name *</label><input type="text" name="lastname" required></div>
+            <div class="form-group"><label>Middle Name *</label><input type="text" name="middlename"></div>
+
+            <div class="form-group">
+              <label>Suffix *</label>
+              <select name="suffix">
+                <option value="">-- Select Suffix --</option>
+                <option>JR</option>
+                <option>SR</option>
+                <option>I</option>
+                <option>II</option>
+                <option>III</option>
+                <option>IV</option>
+                <option>V</option>
+                <option>V1</option>
+                <option>VII</option>
+                <option>VIII</option>
+                <option>IX</option>
+                <option>X</option>
+              </select>
+            </div>
+
+            <div class="form-group"><label>Age *</label><input type="number" name="age" min="1" required></div>
+            <div class="form-group"><label>Status *</label><input type="text" name="status" required></div>
+            <div class="form-group"><label>Religion *</label><input type="text" name="religion" required></div>
+            <div class="form-group"><label>Nationality *</label><input type="text" name="nationality" required></div>
+            <div class="form-group"><label>Birthday *</label><input type="date" name="birthdate" required></div>
+            <div class="form-group"><label>Place of Birth *</label><input type="text" name="place_of_birth" required></div>
+
+            <div class="form-group">
+              <label>Gender *</label>
+              <select name="sex" required>
+                <option value="" disabled selected>Select</option>
+                <option>Male</option>
+                <option>Female</option>
+              </select>
+            </div>
+
+            <h3 style="grid-column: 1 / -1;">Address Information</h3>
+            <div class="form-group"><label>Block / Lot / House No. *</label><input type="text" name="lot_blk" required></div>
+            <div class="form-group"><label>Street *</label><input type="text" name="street" required></div>
+            <div class="form-group"><label>Barangay *</label><input type="text" name="barangay" required></div>
+            <div class="form-group"><label>Municipality / City *</label><input type="text" name="municipality" required></div>
+            <div class="form-group"><label>Province *</label><input type="text" name="province" required></div>
+            <div class="form-group"><label>ZIP Code *</label><input type="text" name="zipcode" required></div>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="form-step">
+          <div class="form-group"><label>Last School Attended *</label><input type="text" name="last_school" required></div>
+
+          <div class="form-group">
+            <label>Student Status *</label>
+            <select name="student_status" required>
+              <option value="">-- Select Status --</option>
+              <option>New Enrollee</option>
+              <option>Transferee</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Year Level *</label>
+            <select name="yearLevel" required>
+              <option value="">-- Select Year Level --</option>
+              <option>G11</option>
+              <option>G12</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Preferred Strand *</label>
+            <select name="strand" required>
+              <option value="">-- Select Strand --</option>
+              <option>TVL - Electrical Installation and Management (EIM)</option>
+              <option>TVL - Automotive Servicing (ATS)</option>
+              <option>ACAD - Humanities & Social Sciences (HUMSS)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="form-step">
+          <h3>Guardian Information</h3>
+          <div class="form-group"><label>Guardian Name *</label><input type="text" name="guardian_name" required></div>
+          <div class="form-group">
+            <label>Relationship *</label>
+            <select name="relationship" required>
+              <option value="">-- Select Relationship --</option>
+              <option>Father</option>
+              <option>Mother</option>
+              <option>Legal Guardian</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Contact Number *</label><input type="tel" name="guardian_phone" placeholder="09XXXXXXXXX" pattern="^0\d{10}$" maxlength="11" required></div>
+          <div class="form-group"><label>Occupation *</label><input type="text" name="occupation" required></div>
+        </div>
+
+        <!-- Step 5 -->
+        <div class="form-step">
+          <div class="form-group"><label>Birth Certificate (PDF or Image) *</label><input type="file" name="birth_cert" accept=".pdf, image/*" required></div>
+          <div class="form-group"><label>Form 137 (PDF or Image) *</label><input type="file" name="form137" accept=".pdf, image/*" required></div>
+          <div class="form-group"><label>Good Moral (PDF or Image) *</label><input type="file" name="good_moral" accept=".pdf, image/*" required></div>
+        </div>
+
+        <!-- Step 6 -->
+        <div class="form-step" id="reviewStep">
+          <h3>Review Your Information</h3>
+          <p>Double-check all the details below before submitting your registration.</p>
+
+          <div class="review-section">
+            <h4>Account Information</h4>
+            <p><strong>Email:</strong> <span id="rev_email"></span></p>
+            <p><strong>Mobile Number:</strong> <span id="rev_phone"></span></p>
+
+            <h4>Personal Information</h4>
+            <p><strong>Name:</strong> <span id="rev_name"></span></p>
+            <p><strong>Age:</strong> <span id="rev_age"></span></p>
+            <p><strong>Gender:</strong> <span id="rev_sex"></span></p>
+            <p><strong>Birthday:</strong> <span id="rev_birthdate"></span></p>
+            <p><strong>Place of Birth:</strong> <span id="rev_place_of_birth"></span></p>
+            <p><strong>Address:</strong> <span id="rev_address"></span></p>
+            <p><strong>Religion:</strong> <span id="rev_religion"></span></p>
+            <p><strong>Nationality:</strong> <span id="rev_nationality"></span></p>
+
+            <h4>Academic Information</h4>
+            <p><strong>Last School Attended:</strong> <span id="rev_last_school"></span></p>
+            <p><strong>Student Status:</strong> <span id="rev_student_status"></span></p>
+            <p><strong>Preferred Strand:</strong> <span id="rev_strand"></span></p>
+
+            <h4>Guardian Information</h4>
+            <p><strong>Guardian Name:</strong> <span id="rev_guardian_name"></span></p>
+            <p><strong>Relationship:</strong> <span id="rev_relationship"></span></p>
+            <p><strong>Contact Number:</strong> <span id="rev_guardian_phone"></span></p>
+            <p><strong>Occupation:</strong> <span id="rev_occupation"></span></p>
+
+            <h4>Uploaded Documents</h4>
+            <p><strong>Birth Certificate:</strong> <span id="rev_birth_cert"></span></p>
+            <p><strong>Form 137:</strong> <span id="rev_form137"></span></p>
+            <p><strong>Good Moral:</strong> <span id="rev_good_moral"></span></p>
+          </div>
+        </div>
+
+
+        <!-- ✅ Buttons -->
+        <div class="buttons">
+          <button type="button" id="prevBtn">Back</button>
+          <button type="button" id="nextBtn">Next</button>
+        </div>
+
+        <!-- ✅ Success Message -->
+        <div class="success" id="successMsg" style="display:none;">
+          <h2>✅ Registration Complete</h2>
+          <p>Thank you! We’ve received your application.</p>
+          <button onclick="window.location.href='../home'">Register Again</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+<div id="privacyModal" class="privacy-modal">
+  <div class="privacy-content">
+    <div class="privacy-card">
+      <h1>Data Privacy Notice and Consent Form</h1>
+      <p><strong>Southville 8B Senior High School</strong> values and respects your right to privacy and ensures that all personal information you provide will be processed in accordance with the Data Privacy Act of 2012 (R.A. 10173).</p>
+
+      <h2>1. Purpose of Data Collection</h2>
+      <p>Your personal data will be collected, used, and stored for the following purposes:</p>
+      <ul>
+        <li>To evaluate your eligibility for admission and enrollment.</li>
+        <li>To maintain accurate student records for administrative and academic purposes.</li>
+        <li>To comply with reporting requirements to the Department of Education and other authorized agencies.</li>
+        <li>To communicate school-related updates, events, and announcements.</li>
+      </ul>
+
+      <h2>2. Types of Personal Data Collected</h2>
+      <p>The following information may be collected from you:</p>
+      <ul>
+        <li>Personal details (name, age, sex, nationality, religion, etc.)</li>
+        <li>Contact information (email, address, phone number)</li>
+        <li>Educational background (previous schools, grades, etc.)</li>
+        <li>Documents (birth certificate, Form 137, good moral certificate)</li>
+      </ul>
+
+      <h2>3. Data Protection and Security</h2>
+      <p>All information will be stored securely in the school’s student database and will only be accessed by authorized personnel. The school implements appropriate physical, technical, and organizational measures to safeguard your data from unauthorized access, disclosure, alteration, or destruction.</p>
+
+      <h2>4. Data Retention and Sharing</h2>
+      <p>Your personal data will be retained for as long as necessary for the fulfillment of the above-stated purposes or as required by law. Sharing of data will only occur with your consent or when mandated by regulatory authorities.</p>
+
+      <div class="consent-section">
+        <p>By clicking “Proceed to Admission Portal,” I hereby give my consent to <strong>Southville 8B Senior High School</strong> to collect, process, and store my personal data for legitimate school-related purposes. I confirm that I have read and understood this Data Privacy Notice.</p>
+      </div>
+
+      <div class="modal-buttons">
+        <button class="proceed-btn">Proceed to Admission Portal</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+    <script src="../js/EnrollmentForm.js"></script>
+
+</body>
+</html>
