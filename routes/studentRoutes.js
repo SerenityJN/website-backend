@@ -134,7 +134,7 @@ router.post("/enroll", upload, async (req, res) => {
 
           <div style="padding: 25px;">
             <p>Dear <strong>${req.body.firstname} ${req.body.lastname}</strong>,</p>
-            <p>Thank you for enrolling at <strong>San Vicente Senior High School (SVSHS)</strong>! Your application has been successfully received.</p>
+            <p>Thank you for enrolling at <strong>Southville 8B Senior High School (SV8BSHS)</strong>! Your application has been successfully received.</p>
 
             <p style="margin-top: 20px; font-size: 1.1em;">
               <strong>Reference Number:</strong> 
@@ -143,10 +143,10 @@ router.post("/enroll", upload, async (req, res) => {
               </span>
             </p>
 
-            <p style="margin-top: 20px;">You can track your enrollment status anytime using our official mobile app:</p>
+            <p style="margin-top: 20px;">Use your reference number to track your enrollment status anytime using our official mobile app:</p>
 
             <p style="text-align: center; margin: 30px 0;">
-              <a href="https://your-mobile-app-link.com" 
+              <a href="https://expo.dev/artifacts/eas/cHDTduGiqavaz43NmcK9sb.apk" 
                 style="background-color: #2563eb; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;">
                 📱 View Enrollment Status
               </a>
