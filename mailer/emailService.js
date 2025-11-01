@@ -13,7 +13,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export const sendEnrollmentEmail = async (to, subject, html) => {
   try {
     const data = await resend.emails.send({
-      from: "SVSHS Enrollment <enrollment.sv8bshs@school.edu.ph>", // customize this name
+      from: "SVSHS Enrollment <enrollment@sv8bshs.site>", // customize this name
       to,
       subject,
       html,
@@ -23,3 +23,4 @@ export const sendEnrollmentEmail = async (to, subject, html) => {
     console.error("❌ Email send error:", error);
   }
 };
+
