@@ -1,18 +1,26 @@
-import mysql from "mysql2";
+// models/db.js
+import mysql from "mysql2/promise";
+import dotenv from "dotenv";
 
-const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "admin", // update if you have one
-  database: "enrollment_db",
+dotenv.config();
+
+// ✅ Create a connection pool (no db.connect!)
+const db = mysql.createPool({
+  host: process.env.DB_HOST,        // e.g. "srv123.hostinger.com"
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_DATABASE,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
 });
 
-db.connect((err) => {
-  if (err) {
-    console.error("❌ MySQL Connection Error:", err);
-  } else {
-    console.log("✅ Connected to MySQL Database");
-  }
-});
+// ✅ Optional: test the connection once
+try {
+  const [rows] = await db.query("SELECT 1");
+  console.log("✅ Successfully connected to ONLINE Hostinger MySQL!");
+} catch (err) {
+  console.error("❌ MySQL connection failed:", err);
+}
 
 export default db;
