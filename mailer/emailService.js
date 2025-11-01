@@ -1,26 +1,25 @@
-// emailService.js
-import nodemailer from "nodemailer";
+// 📧 emailService.js
+import { Resend } from "resend";
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+// Initialize Resend with your API key from environment variables
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-export async function sendEnrollmentEmail(to, subject, htmlContent) {
+/**
+ * Send enrollment confirmation email
+ * @param {string} to - recipient email
+ * @param {string} subject - email subject
+ * @param {string} html - email HTML content
+ */
+export const sendEnrollmentEmail = async (to, subject, html) => {
   try {
-    const info = await transporter.sendMail({
-      from: `"Enrollment System" <SV8BSHS@gmail.com>`,
+    const data = await resend.emails.send({
+      from: "SVSHS Enrollment <enrollment@sv8bshs.site>", // customize this name
       to,
       subject,
-      html: htmlContent,
+      html,
     });
-    console.log("✅ Email sent:", info.messageId);
+    console.log("✅ Email sent successfully:", data);
   } catch (error) {
     console.error("❌ Email send error:", error);
   }
-}
+};
