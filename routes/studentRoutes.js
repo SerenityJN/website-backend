@@ -9,20 +9,7 @@ import cloudinary from "../config/cloudinary.js";
 const router = express.Router();
 
 /* ===========================================================
-   🔤 Helper: Convert to Title Case
-   =========================================================== */
-function toTitleCase(str) {
-  if (!str) return "";
-  return str
-    .toLowerCase()
-    .split(" ")
-    .filter(word => word.trim() !== "")
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
-/* ===========================================================
-   ☁️ Cloudinary Storage Setup
+   🗂 CLOUDINARY STORAGE FIX — handles PDF, DOCX, and Images
    =========================================================== */
 const documentStorage = new CloudinaryStorage({
   cloudinary,
@@ -31,16 +18,41 @@ const documentStorage = new CloudinaryStorage({
     const folderPath = `document/${lrn} ${lastname?.toUpperCase()}`;
     const fileLabel = file.fieldname;
 
+    // detect if document or image
+    const isDocument =
+      file.mimetype.includes("pdf") ||
+      file.mimetype.includes("word") ||
+      file.mimetype.includes("officedocument");
+
     return {
       folder: folderPath,
       public_id: fileLabel,
-      resource_type: "auto", // auto-detects image/pdf/docx
-      format: undefined, // let Cloudinary keep original format
+      resource_type: isDocument ? "raw" : "image", // ✅ Fix for PDFs/DOCX
+      use_filename: true,
+      unique_filename: false,
     };
   },
 });
 
-const upload = multer({ storage: documentStorage }).fields([
+/* ===========================================================
+   📎 MULTER CONFIGURATION (accepts multiple uploads)
+   =========================================================== */
+const upload = multer({
+  storage: documentStorage,
+  fileFilter: (req, file, cb) => {
+    const allowedMimeTypes = [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "image/jpeg",
+      "image/png",
+      "image/jpg",
+      "image/webp",
+    ];
+    if (allowedMimeTypes.includes(file.mimetype)) cb(null, true);
+    else cb(new Error("Only PDF, DOCX, and image files are allowed"), false);
+  },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+}).fields([
   { name: "birth_cert", maxCount: 1 },
   { name: "form137", maxCount: 1 },
   { name: "good_moral", maxCount: 1 },
@@ -58,9 +70,7 @@ router.post("/enroll", upload, async (req, res) => {
 
   if (!student_type) {
     conn.release();
-    return res
-      .status(400)
-      .json({ success: false, message: "Student type is required." });
+    return res.status(400).json({ success: false, message: "Student type is required." });
   }
 
   try {
@@ -69,29 +79,10 @@ router.post("/enroll", upload, async (req, res) => {
 
     if (student_type === "New Enrollee" || student_type === "Transferee") {
       const {
-        lrn,
-        email,
-        firstname,
-        lastname,
-        middlename,
-        suffix,
-        age,
-        sex,
-        status,
-        nationality,
-        birthdate,
-        place_of_birth,
-        religion,
-        lot_blk,
-        street,
-        barangay,
-        municipality,
-        province,
-        zipcode,
-        strand,
-        phone,
-        guardian_name,
-        guardian_phone,
+        lrn, email, firstname, lastname, middlename, suffix, age, sex, status,
+        nationality, birthdate, place_of_birth, religion, lot_blk, street,
+        barangay, municipality, province, zipcode, strand, phone,
+        guardian_name, guardian_phone
       } = req.body;
 
       let { yearLevel } = req.body;
@@ -99,9 +90,7 @@ router.post("/enroll", upload, async (req, res) => {
 
       if (!lrn || !email || !firstname || !lastname || !yearLevel || !strand) {
         conn.release();
-        return res
-          .status(400)
-          .json({ success: false, message: "Missing required fields." });
+        return res.status(400).json({ success: false, message: "Missing required fields." });
       }
 
       // 🔍 Check for existing LRN or email
@@ -111,31 +100,11 @@ router.post("/enroll", upload, async (req, res) => {
       );
       if (exists.length > 0) {
         conn.release();
-        return res
-          .status(400)
-          .json({ success: false, message: "LRN or Email is already registered." });
+        return res.status(400).json({ success: false, message: "LRN or Email is already registered." });
       }
 
-      /* ===========================================================
-         🔤 Format Strings to Title Case
-         =========================================================== */
-      const formattedFirstname = toTitleCase(firstname);
-      const formattedLastname = toTitleCase(lastname);
-      const formattedMiddlename = toTitleCase(middlename);
-      const formattedSuffix = toTitleCase(suffix);
-      const formattedNationality = toTitleCase(nationality);
-      const formattedReligion = toTitleCase(religion);
-      const formattedPlaceOfBirth = toTitleCase(place_of_birth);
-      const formattedGuardianName = toTitleCase(guardian_name);
-
-      const formattedLotBlk = toTitleCase(lot_blk);
-      const formattedStreet = toTitleCase(street);
-      const formattedBarangay = toTitleCase(barangay);
-      const formattedMunicipality = toTitleCase(municipality);
-      const formattedProvince = toTitleCase(province);
-
       // 🏠 Combine address fields
-      const home_add = `${formattedLotBlk}, ${formattedStreet}, ${formattedBarangay}, ${formattedMunicipality}, ${formattedProvince} ${zipcode}`;
+      const home_add = `${lot_blk}, ${street}, ${barangay}, ${municipality}, ${province} ${zipcode}`;
 
       // 🧍 Insert student details
       await conn.query(
@@ -145,29 +114,14 @@ router.post("/enroll", upload, async (req, res) => {
            student_type, enrollment_status, created_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', NOW())`,
         [
-          lrn,
-          formattedFirstname,
-          formattedLastname,
-          formattedMiddlename,
-          formattedSuffix,
-          age,
-          sex,
-          status,
-          formattedNationality,
-          birthdate,
-          formattedPlaceOfBirth,
-          formattedReligion,
-          phone,
-          home_add,
-          email,
-          yearLevel,
-          strand,
-          student_type,
+          lrn, firstname, lastname, middlename, suffix, age, sex, status, nationality,
+          birthdate, place_of_birth, religion, phone, home_add, email, yearLevel,
+          strand, student_type,
         ]
       );
 
       /* ===========================================================
-         📎 Handle Cloudinary URLs
+         ☁️ Store Cloudinary file URLs
          =========================================================== */
       const birthCert = req.files["birth_cert"]?.[0]?.path || null;
       const form137 = req.files["form137"]?.[0]?.path || null;
@@ -186,7 +140,7 @@ router.post("/enroll", upload, async (req, res) => {
       // 👪 Guardian details
       await conn.query(
         `INSERT INTO guardians (LRN, name, contact) VALUES (?, ?, ?)`,
-        [lrn, formattedGuardianName, guardian_phone]
+        [lrn, guardian_name, guardian_phone]
       );
 
       // 🔢 Generate Reference Number
@@ -215,17 +169,15 @@ router.post("/enroll", upload, async (req, res) => {
               <h2 style="margin:0;">SVSHS Enrollment Confirmation</h2>
             </div>
             <div style="padding:25px;">
-              <p>Dear <strong>${toTitleCase(req.body.firstname)} ${toTitleCase(req.body.lastname)}</strong>,</p>
+              <p>Dear <strong>${req.body.firstname} ${req.body.lastname}</strong>,</p>
               <p>Thank you for enrolling at <strong>Southville 8B Senior High School (SV8BSHS)</strong>!</p>
               <p>Your application has been successfully received.</p>
-
               <p style="margin-top:20px;font-size:1.1em;">
                 <strong>Reference Number:</strong> 
                 <span style="display:inline-block;background:#f1f5f9;padding:8px 12px;border-radius:6px;margin-top:4px;">
                   ${reference}
                 </span>
               </p>
-
               <p>Use this reference number to track your enrollment status anytime using our mobile app:</p>
               <p style="text-align:center;margin:30px 0;">
                 <a href="https://expo.dev/artifacts/eas/cHDTduGiqavaz43NmcK9sb.apk"
@@ -233,11 +185,10 @@ router.post("/enroll", upload, async (req, res) => {
                   📱 View Enrollment Status
                 </a>
               </p>
-
               <hr style="border:none;border-top:1px solid #e5e7eb;margin:30px 0;">
               <p style="font-size:0.9em;color:#666;">This is an automated message — please do not reply.</p>
               <p style="text-align:center;color:#aaa;font-size:0.8em;margin-top:20px;">
-                © ${new Date().getFullYear()} Southville 8B Senior High School. All rights reserved.
+                © ${new Date().getFullYear()} San Vicente Senior High School. All rights reserved.
               </p>
             </div>
           </div>
@@ -253,15 +204,15 @@ router.post("/enroll", upload, async (req, res) => {
       reference,
       message: `Application submitted successfully. Reference: ${reference}`,
     });
+
   } catch (err) {
     await conn.rollback();
     console.error("❌ Enrollment Transaction Error:", err);
     res.status(500).json({
       success: false,
-      message:
-        err.code === "ER_DUP_ENTRY"
-          ? "LRN or Email already exists."
-          : "An internal server error occurred.",
+      message: err.code === "ER_DUP_ENTRY"
+        ? "LRN or Email already exists."
+        : "An internal server error occurred.",
     });
   } finally {
     conn.release();
@@ -269,5 +220,3 @@ router.post("/enroll", upload, async (req, res) => {
 });
 
 export default router;
-
-
