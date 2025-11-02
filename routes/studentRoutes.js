@@ -22,9 +22,8 @@ const documentStorage = new CloudinaryStorage({
 
     return {
       folder: folderPath,
-      format: file.mimetype.split("/")[1] || "jpg",
-      public_id: fileLabel, // File name = birth_cert.jpg, etc.
-      transformation: [{ quality: "auto", fetch_format: "auto" }],
+      public_id: fileLabel,
+      resource_type: "auto",
     };
   },
 });
@@ -198,3 +197,4 @@ router.post("/enroll", upload, async (req, res) => {
 });
 
 export default router;
+
