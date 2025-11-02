@@ -24,7 +24,7 @@ const documentStorage = new CloudinaryStorage({
       folder: folderPath,
       resource_type: "auto",
       public_id: fileLabel,
-      transformation: [{ quality: "auto", fetch_format: "auto" }],
+      unique_filename: false,
     };
   },
 });
@@ -197,4 +197,5 @@ router.post("/enroll", upload, async (req, res) => {
 });
 
 export default router;
+
 
