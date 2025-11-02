@@ -9,49 +9,26 @@ import cloudinary from "../config/cloudinary.js";
 const router = express.Router();
 
 /* ===========================================================
-   📂 CLOUDINARY STORAGE (with extension + MIME validation)
+   📤 CLOUDINARY STORAGE CONFIGURATION
+   Each student’s files go to: document/{LRN LASTNAME}/
+   Example: document/65474554335 NUARIN/
    =========================================================== */
-const allowedMimeTypes = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // docx
-];
-
 const documentStorage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => {
     const { lrn, lastname } = req.body;
     const folderPath = `document/${lrn} ${lastname?.toUpperCase()}`;
-    const fileLabel = file.fieldname;
-
-    // Get file extension
-    const ext = file.originalname.split(".").pop().toLowerCase();
-
-    // Reject invalid MIME types early
-    if (!allowedMimeTypes.includes(file.mimetype)) {
-      throw new Error(`Unsupported file type: ${file.mimetype}`);
-    }
+    const fileLabel = file.fieldname; // e.g. birth_cert, good_moral, etc.
 
     return {
       folder: folderPath,
-      public_id: `${fileLabel}.${ext}`, // ✅ preserve file extension
-      resource_type: "auto", // auto handles image/pdf/docx
-      format: ext, // ✅ ensure Cloudinary respects format
+      public_id: fileLabel,
+      transformation: [{ quality: "auto", fetch_format: "auto" }],
     };
   },
 });
 
-// ✅ Multer configuration with MIME validation
-const upload = multer({
-  storage: documentStorage,
-  fileFilter: (req, file, cb) => {
-    if (allowedMimeTypes.includes(file.mimetype)) cb(null, true);
-    else cb(new Error("Only images, PDFs, and DOCX files are allowed"));
-  },
-}).fields([
+const upload = multer({ storage: documentStorage }).fields([
   { name: "birth_cert", maxCount: 1 },
   { name: "form137", maxCount: 1 },
   { name: "good_moral", maxCount: 1 },
@@ -144,7 +121,6 @@ router.post("/enroll", upload, async (req, res) => {
 
       await conn.query(
         `INSERT INTO student_accounts (LRN, track_code) VALUES (?, ?)`,
-
         [lrn, reference]
       );
     }
