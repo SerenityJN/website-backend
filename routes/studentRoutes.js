@@ -9,8 +9,17 @@ import cloudinary from "../config/cloudinary.js";
 const router = express.Router();
 
 /* ===========================================================
-   🗂 CLOUDINARY STORAGE FIX — handles PDF, DOCX, and Images
+   📂 CLOUDINARY STORAGE (with extension + MIME validation)
    =========================================================== */
+const allowedMimeTypes = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // docx
+];
+
 const documentStorage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => {
@@ -18,40 +27,30 @@ const documentStorage = new CloudinaryStorage({
     const folderPath = `document/${lrn} ${lastname?.toUpperCase()}`;
     const fileLabel = file.fieldname;
 
-    // detect if document or image
-    const isDocument =
-      file.mimetype.includes("pdf") ||
-      file.mimetype.includes("word") ||
-      file.mimetype.includes("officedocument");
+    // Get file extension
+    const ext = file.originalname.split(".").pop().toLowerCase();
+
+    // Reject invalid MIME types early
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      throw new Error(`Unsupported file type: ${file.mimetype}`);
+    }
 
     return {
       folder: folderPath,
-      public_id: fileLabel,
-      resource_type: isDocument ? "raw" : "image", // ✅ Fix for PDFs/DOCX
-      use_filename: true,
-      unique_filename: false,
+      public_id: `${fileLabel}.${ext}`, // ✅ preserve file extension
+      resource_type: "auto", // auto handles image/pdf/docx
+      format: ext, // ✅ ensure Cloudinary respects format
     };
   },
 });
 
-/* ===========================================================
-   📎 MULTER CONFIGURATION (accepts multiple uploads)
-   =========================================================== */
+// ✅ Multer configuration with MIME validation
 const upload = multer({
   storage: documentStorage,
   fileFilter: (req, file, cb) => {
-    const allowedMimeTypes = [
-      "application/pdf",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "image/jpeg",
-      "image/png",
-      "image/jpg",
-      "image/webp",
-    ];
     if (allowedMimeTypes.includes(file.mimetype)) cb(null, true);
-    else cb(new Error("Only PDF, DOCX, and image files are allowed"), false);
+    else cb(new Error("Only images, PDFs, and DOCX files are allowed"));
   },
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
 }).fields([
   { name: "birth_cert", maxCount: 1 },
   { name: "form137", maxCount: 1 },
@@ -94,10 +93,7 @@ router.post("/enroll", upload, async (req, res) => {
       }
 
       // 🔍 Check for existing LRN or email
-      const [exists] = await conn.query(
-        "SELECT 1 FROM student_details WHERE LRN = ? OR email = ?",
-        [lrn, email]
-      );
+      const [exists] = await conn.query("SELECT 1 FROM student_details WHERE LRN = ? OR email = ?", [lrn, email]);
       if (exists.length > 0) {
         conn.release();
         return res.status(400).json({ success: false, message: "LRN or Email is already registered." });
@@ -121,7 +117,7 @@ router.post("/enroll", upload, async (req, res) => {
       );
 
       /* ===========================================================
-         ☁️ Store Cloudinary file URLs
+         📎 Handle Cloudinary URLs
          =========================================================== */
       const birthCert = req.files["birth_cert"]?.[0]?.path || null;
       const form137 = req.files["form137"]?.[0]?.path || null;
@@ -148,6 +144,7 @@ router.post("/enroll", upload, async (req, res) => {
 
       await conn.query(
         `INSERT INTO student_accounts (LRN, track_code) VALUES (?, ?)`,
+
         [lrn, reference]
       );
     }
@@ -172,12 +169,14 @@ router.post("/enroll", upload, async (req, res) => {
               <p>Dear <strong>${req.body.firstname} ${req.body.lastname}</strong>,</p>
               <p>Thank you for enrolling at <strong>Southville 8B Senior High School (SV8BSHS)</strong>!</p>
               <p>Your application has been successfully received.</p>
+
               <p style="margin-top:20px;font-size:1.1em;">
                 <strong>Reference Number:</strong> 
                 <span style="display:inline-block;background:#f1f5f9;padding:8px 12px;border-radius:6px;margin-top:4px;">
                   ${reference}
                 </span>
               </p>
+
               <p>Use this reference number to track your enrollment status anytime using our mobile app:</p>
               <p style="text-align:center;margin:30px 0;">
                 <a href="https://expo.dev/artifacts/eas/cHDTduGiqavaz43NmcK9sb.apk"
@@ -185,6 +184,7 @@ router.post("/enroll", upload, async (req, res) => {
                   📱 View Enrollment Status
                 </a>
               </p>
+
               <hr style="border:none;border-top:1px solid #e5e7eb;margin:30px 0;">
               <p style="font-size:0.9em;color:#666;">This is an automated message — please do not reply.</p>
               <p style="text-align:center;color:#aaa;font-size:0.8em;margin-top:20px;">
