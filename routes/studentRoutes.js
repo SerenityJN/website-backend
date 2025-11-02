@@ -34,7 +34,8 @@ const documentStorage = new CloudinaryStorage({
     return {
       folder: folderPath,
       public_id: fileLabel,
-      resource_type: "raw",
+      resource_type: "auto", // auto-detects image/pdf/docx
+      format: undefined, // let Cloudinary keep original format
     };
   },
 });
@@ -268,4 +269,5 @@ router.post("/enroll", upload, async (req, res) => {
 });
 
 export default router;
+
 
