@@ -18,13 +18,13 @@ const documentStorage = new CloudinaryStorage({
   params: async (req, file) => {
     const { lrn, lastname } = req.body;
     const folderPath = `document/${lrn} ${lastname?.toUpperCase()}`;
-    const fileLabel = file.fieldname; // e.g. birth_cert, good_moral, etc.
+    const fileLabel = file.fieldname; 
 
     return {
       folder: folderPath,
-      resource_type: "auto",
-      public_id: fileLabel,
-      unique_filename: false,
+      format: file.mimetype.split("/")[1] || "jpg",
+      public_id: fileLabel, 
+      transformation: [{ quality: "auto", fetch_format: "auto" }],
     };
   },
 });
@@ -118,12 +118,24 @@ router.post("/enroll", upload, async (req, res) => {
       );
 
       // 🔢 Generate Reference Number
-      reference = "SVSHS-" + String(lrn).padStart(6, "0");
+      reference = "SV8BSHS-" + String(lrn).padStart(6, "0");
 
       await conn.query(
         `INSERT INTO student_accounts (LRN, track_code) VALUES (?, ?)`,
         [lrn, reference]
       );
+
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const nextYear = currentYear + 1;
+      const school_year = `${currentYear}-${nextYear}`;
+      await conn.query(
+        `INSERT INTO student_enrollments 
+        (LRN, school_year, semester, status)
+        VALUES (?, ?, ?, 'Pending')`,
+        [lrn, school_year, semester]
+      );
+
     }
 
     // ✅ Commit Transaction
@@ -197,5 +209,3 @@ router.post("/enroll", upload, async (req, res) => {
 });
 
 export default router;
-
-
