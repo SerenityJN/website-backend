@@ -125,15 +125,15 @@ router.post("/enroll", upload, async (req, res) => {
         [lrn, reference]
       );
 
-      const now = new Date();
+      const now = new Date(); 
       const currentYear = now.getFullYear();
       const nextYear = currentYear + 1;
       const school_year = `${currentYear}-${nextYear}`;
       await conn.query(
         `INSERT INTO student_enrollments 
         (LRN, school_year, semester, status)
-        VALUES (?, ?, ?, 'Pending')`,
-        [lrn, school_year, semester]
+        VALUES (?, ?, ?, ?)`,
+        [lrn, school_year, "1st", "Pending"]
       );
 
     }
@@ -209,3 +209,4 @@ router.post("/enroll", upload, async (req, res) => {
 });
 
 export default router;
+
