@@ -177,7 +177,7 @@ router.post("/enroll", upload, async (req, res) => {
               <hr style="border:none;border-top:1px solid #e5e7eb;margin:30px 0;">
               <p style="font-size:0.9em;color:#666;">This is an automated message — please do not reply.</p>
               <p style="text-align:center;color:#aaa;font-size:0.8em;margin-top:20px;">
-                © ${new Date().getFullYear()} San Vicente Senior High School. All rights reserved.
+                © ${new Date().getFullYear()} Southville 8B Senior High School. All rights reserved.
               </p>
             </div>
           </div>
@@ -209,3 +209,4 @@ router.post("/enroll", upload, async (req, res) => {
 });
 
 export default router;
+
