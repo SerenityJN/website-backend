@@ -57,7 +57,7 @@ router.post("/enroll", upload, async (req, res) => {
     if (student_type === "New Enrollee" || student_type === "Transferee") {
       const {
         lrn, email, firstname, lastname, middlename, suffix, age, sex, status,
-        nationality, birthdate, place_of_birth, religion, lot_blk, street,
+        nationality, birthdate, birth_province, birth_municipality, religion, lot_blk, street,
         barangay, municipality, province, zipcode, strand, phone,
         guardian_name, guardian_phone
       } = req.body;
@@ -84,12 +84,12 @@ router.post("/enroll", upload, async (req, res) => {
       await conn.query(
         `INSERT INTO student_details 
           (LRN, firstname, lastname, middlename, suffix, age, sex, status, nationality, birthdate,
-           place_of_birth, religion, cpnumber, home_add, email, yearlevel, strand, 
+           birth_province, birth_municipality, religion, cpnumber, home_add, email, yearlevel, strand, 
            student_type, enrollment_status, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', NOW())`,
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', NOW())`,
         [
           lrn, firstname, lastname, middlename, suffix, age, sex, status, nationality,
-          birthdate, place_of_birth, religion, phone, home_add, email, yearLevel,
+          birthdate, birth_province, birth_municipality, religion, phone, home_add, email, yearLevel,
           strand, student_type,
         ]
       );
@@ -209,4 +209,5 @@ router.post("/enroll", upload, async (req, res) => {
 });
 
 export default router;
+
 
