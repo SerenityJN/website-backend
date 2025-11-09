@@ -32,12 +32,13 @@ const upload = multer({ storage: documentStorage }).fields([
   { name: "form137", maxCount: 1 },
   { name: "good_moral", maxCount: 1 },
   { name: "report_card", maxCount: 1 },
+  { name: "picture", maxCount: 1 },
   { name: "transcript_records", maxCount: 1 },
   { name: "honorable_dismissal", maxCount: 1 },
 ]);
 
 /* ===========================================================
-   🎓 ENROLLMENT ROUTE - FIXED VERSION
+   🎓 ENROLLMENT ROUTE - FIXED FOR YOUR DATABASE SCHEMA
    =========================================================== */
 router.post("/enroll", upload, async (req, res) => {
   const conn = await db.getConnection();
@@ -51,6 +52,7 @@ router.post("/enroll", upload, async (req, res) => {
   try {
     await conn.beginTransaction();
     let reference = "";
+    let studentLRN = "";
 
     // Handle New Enrollee and Transferee
     if (student_type === "New Enrollee" || student_type === "Transferee") {
@@ -66,6 +68,8 @@ router.post("/enroll", upload, async (req, res) => {
         // IP and 4Ps Information
         ip_community, ip_specify, fourps_beneficiary, fourps_id
       } = req.body;
+
+      studentLRN = lrn;
 
       // Validate required fields
       if (!lrn || !email || !firstname || !lastname || !yearLevel || !strand) {
@@ -100,72 +104,66 @@ router.post("/enroll", upload, async (req, res) => {
       const fourpsBeneficiary = fourps_beneficiary === "on" ? "Yes" : "No";
       const fourpsIdValue = fourps_beneficiary === "on" ? fourps_id : null;
 
-      // 🧍 Insert student details
+      // 🧍 Insert student details - FIXED FOR YOUR SCHEMA
       await conn.query(
         `INSERT INTO student_details 
           (LRN, firstname, lastname, middlename, suffix, age, sex, status, nationality, birthdate,
            birth_province, birth_municipality, religion, cpnumber, home_add, email, yearlevel, strand, 
-           student_type, enrollment_status, last_school, ip_community, ip_specify, fourps_beneficiary, fourps_id, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, ?, ?, ?, NOW())`,
+           student_type, enrollment_status, rejection_reason, ip_community, ip_specify, fourps_beneficiary, fourps_id, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', NULL, ?, ?, ?, ?, NOW())`,
         [
           lrn, firstname, lastname, middlename, suffix, age, sex, status, nationality,
           birthdate, birth_province, birth_municipality, religion, phone, home_add, 
-          email, yearLevel, strand, student_type, last_school,
+          email, yearLevel, strand, student_type,
           ipCommunity, ipSpecifyValue, fourpsBeneficiary, fourpsIdValue
         ]
       );
 
       /* ===========================================================
-         📎 Handle Cloudinary URLs
+         📎 Handle Cloudinary URLs - FIXED FOR YOUR SCHEMA
          =========================================================== */
       const birthCert = req.files["birth_cert"]?.[0]?.path || null;
       const form137 = req.files["form137"]?.[0]?.path || null;
       const goodMoral = req.files["good_moral"]?.[0]?.path || null;
       const reportCard = req.files["report_card"]?.[0]?.path || null;
+      const picture = req.files["picture"]?.[0]?.path || null;
       const transcriptRecords = req.files["transcript_records"]?.[0]?.path || null;
       const honorableDismissal = req.files["honorable_dismissal"]?.[0]?.path || null;
 
       await conn.query(
         `INSERT INTO student_documents 
-         (LRN, birth_cert, form137, good_moral, report_card, transcript_records, honorable_dismissal)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [lrn, birthCert, form137, goodMoral, reportCard, transcriptRecords, honorableDismissal]
+         (LRN, birth_cert, form137, good_moral, report_card, picture, transcript_records, honorable_dismissal)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [lrn, birthCert, form137, goodMoral, reportCard, picture, transcriptRecords, honorableDismissal]
       );
 
-      // 👪 Parent/Guardian details
-      // Insert Father's information
-      if (fathers_lastname && fathers_firstname) {
-        await conn.query(
-          `INSERT INTO guardians (LRN, lastname, firstname, middlename, contact, relationship) 
-           VALUES (?, ?, ?, ?, ?, 'Father')`,
-          [lrn, fathers_lastname, fathers_firstname, fathers_middlename, fathers_contact]
-        );
-      }
+      // 👪 Parent/Guardian details - FIXED FOR YOUR SCHEMA
+      const fathersName = `${fathers_firstname || ''} ${fathers_middlename || ''} ${fathers_lastname || ''}`.trim();
+      const mothersName = `${mothers_firstname || ''} ${mothers_middlename || ''} ${mothers_lastname || ''}`.trim();
+      const guardianName = `${guardian_firstname || ''} ${guardian_middlename || ''} ${guardian_lastname || ''}`.trim();
 
-      // Insert Mother's information
-      if (mothers_lastname && mothers_firstname) {
-        await conn.query(
-          `INSERT INTO guardians (LRN, lastname, firstname, middlename, contact, relationship) 
-           VALUES (?, ?, ?, ?, ?, 'Mother')`,
-          [lrn, mothers_lastname, mothers_firstname, mothers_middlename, mothers_contact]
-        );
-      }
-
-      // Insert Guardian's information
-      if (guardian_lastname && guardian_firstname) {
-        await conn.query(
-          `INSERT INTO guardians (LRN, lastname, firstname, middlename, contact, relationship) 
-           VALUES (?, ?, ?, ?, ?, 'Guardian')`,
-          [lrn, guardian_lastname, guardian_firstname, guardian_middlename, guardian_contact]
-        );
-      }
+      await conn.query(
+        `INSERT INTO guardians 
+         (LRN, FathersName, FathersContact, MothersName, MothersContact, GuardianName, GuardianContact)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          lrn, 
+          fathersName, fathers_contact,
+          mothersName, mothers_contact,
+          guardianName, guardian_contact
+        ]
+      );
 
       // 🔢 Generate Reference Number
       reference = "SV8BSHS-" + String(lrn).padStart(6, "0");
 
+      // Generate default password
+      const defaultPassword = lastname.substring(0, 4).toLowerCase() + lrn.slice(-4);
+      const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
       await conn.query(
-        `INSERT INTO student_accounts (LRN, track_code) VALUES (?, ?)`,
-        [lrn, reference]
+        `INSERT INTO student_accounts (LRN, track_code, password) VALUES (?, ?, ?)`,
+        [lrn, reference, hashedPassword]
       );
 
       const now = new Date(); 
@@ -173,11 +171,12 @@ router.post("/enroll", upload, async (req, res) => {
       const nextYear = currentYear + 1;
       const school_year = `${currentYear}-${nextYear}`;
       
+      // Insert into student_enrollment - FIXED FOR YOUR SCHEMA
       await conn.query(
-        `INSERT INTO student_enrollments 
-        (LRN, school_year, semester, status)
-        VALUES (?, ?, ?, ?)`,
-        [lrn, school_year, "1st", "Pending"]
+        `INSERT INTO student_enrollment 
+        (LRN, school_year, semester, status, grade_slip, rejection_reason, created_at)
+        VALUES (?, ?, '1st', 'Pending', NULL, NULL, NOW())`,
+        [lrn, school_year]
       );
 
     } 
@@ -187,6 +186,8 @@ router.post("/enroll", upload, async (req, res) => {
         returnee_lrn, returnee_email, returnee_phone,
         reason_leaving, reason_returning
       } = req.body;
+
+      studentLRN = returnee_lrn;
 
       if (!returnee_lrn || !returnee_email) {
         conn.release();
@@ -213,17 +214,9 @@ router.post("/enroll", upload, async (req, res) => {
       // Update student record for returnee
       await conn.query(
         `UPDATE student_details 
-         SET student_type = ?, enrollment_status = 'Pending', updated_at = NOW()
+         SET student_type = ?, enrollment_status = 'Pending'
          WHERE LRN = ?`,
         [student_type, returnee_lrn]
-      );
-
-      // Insert returnee specific information
-      await conn.query(
-        `INSERT INTO returnee_details 
-         (LRN, reason_leaving, reason_returning, return_date)
-         VALUES (?, ?, ?, NOW())`,
-        [returnee_lrn, reason_leaving, reason_returning]
       );
 
       // Generate reference number for returnee
@@ -235,10 +228,10 @@ router.post("/enroll", upload, async (req, res) => {
       const school_year = `${currentYear}-${nextYear}`;
       
       await conn.query(
-        `INSERT INTO student_enrollments 
-        (LRN, school_year, semester, status)
-        VALUES (?, ?, ?, ?)`,
-        [returnee_lrn, school_year, "1st", "Pending"]
+        `INSERT INTO student_enrollment 
+        (LRN, school_year, semester, status, grade_slip, rejection_reason, created_at)
+        VALUES (?, ?, '1st', 'Pending', NULL, NULL, NOW())`,
+        [returnee_lrn, school_year]
       );
     }
 
@@ -257,7 +250,7 @@ router.post("/enroll", upload, async (req, res) => {
 
       await sendEnrollmentEmail(
         studentEmail,
-        "🎓 SVSHS Enrollment Confirmation",
+        "🎓 SV8BSHS Enrollment Confirmation",
         `
         <div style="font-family:'Segoe UI',Arial,sans-serif;line-height:1.6;color:#333;background-color:#f8fafc;padding:20px;">
           <div style="max-width:600px;background:#fff;margin:auto;border-radius:8px;box-shadow:0 4px 10px rgba(0,0,0,0.05);overflow:hidden;">
@@ -287,7 +280,7 @@ router.post("/enroll", upload, async (req, res) => {
               <hr style="border:none;border-top:1px solid #e5e7eb;margin:30px 0;">
               <p style="font-size:0.9em;color:#666;">This is an automated message — please do not reply.</p>
               <p style="text-align:center;color:#aaa;font-size:0.8em;margin-top:20px;">
-                © ${new Date().getFullYear()} San Vicente Senior High School. All rights reserved.
+                © ${new Date().getFullYear()} Southville 8B Senior High School. All rights reserved.
               </p>
             </div>
           </div>
@@ -296,7 +289,6 @@ router.post("/enroll", upload, async (req, res) => {
       );
     } catch (mailError) {
       console.error("⚠️ Email send failed:", mailError);
-      // Don't fail the enrollment if email fails
     }
 
     res.status(200).json({
