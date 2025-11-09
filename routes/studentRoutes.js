@@ -173,7 +173,7 @@ router.post("/enroll", upload, async (req, res) => {
       
       // Insert into student_enrollment - FIXED FOR YOUR SCHEMA
       await conn.query(
-        `INSERT INTO student_enrollment 
+        `INSERT INTO student_enrollments 
         (LRN, school_year, semester, status, grade_slip, rejection_reason, created_at)
         VALUES (?, ?, '1st', 'Pending', NULL, NULL, NOW())`,
         [lrn, school_year]
@@ -321,4 +321,5 @@ router.post("/enroll", upload, async (req, res) => {
 });
 
 export default router;
+
 
