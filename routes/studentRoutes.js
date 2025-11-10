@@ -37,6 +37,26 @@ const upload = multer({ storage: documentStorage }).fields([
   { name: "honorable_dismissal", maxCount: 1 },
 ]);
 
+router.get("/semester-status", async (req, res) => {
+    try {
+        const [firstSemResponse, secondSemResponse] = await Promise.all([
+            fetch('http://localhost:8000/first-semester/status'),
+            fetch('http://localhost:8000/second-semester/status')
+        ]);
+        
+        const firstSemData = await firstSemResponse.json();
+        const secondSemData = await secondSemResponse.json();
+        
+        res.json({
+            firstSemester: firstSemData,
+            secondSemester: secondSemData
+        });
+    } catch (error) {
+        console.error('Error fetching semester status:', error);
+        res.status(500).json({ error: "Failed to fetch semester status" });
+    }
+});
+
 /* ===========================================================
    🎓 ENROLLMENT ROUTE - FIXED FOR YOUR DATABASE SCHEMA
    =========================================================== */
@@ -321,5 +341,6 @@ router.post("/enroll", upload, async (req, res) => {
 });
 
 export default router;
+
 
 
