@@ -52,24 +52,27 @@ async function ensureCloudinaryFolder(lrn, lastname) {
   }
 
   const folderPath = `documents/${lrn}_${lastname?.toUpperCase() || 'STUDENT'}`;
+  console.log(`🔄 Creating Cloudinary folder: ${folderPath}`);
   
   try {
-    // Create folder by uploading a tiny transparent SVG
+    // Upload a tiny 1x1 transparent PNG to force folder creation
+    const transparentPixel = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+    
     await cloudinary.uploader.upload(
-      'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMSIgaGVpZ2h0PSIxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGZpbGw9InRyYW5zcGFyZW50Ii8+PC9zdmc+',
+      `data:image/png;base64,${transparentPixel}`,
       {
-        public_id: '.folder_placeholder',
+        public_id: 'folder_placeholder',
         folder: folderPath,
-        overwrite: false,
-        invalidate: false,
-        resource_type: 'image'
+        overwrite: false
       }
     );
+    
     console.log(`✅ Cloudinary folder created: ${folderPath}`);
   } catch (error) {
-    // Ignore "already exists" errors, log others
-    if (!error.message.includes('already exists')) {
-      console.warn(`⚠️ Cloudinary folder creation warning: ${error.message}`);
+    if (error.message.includes('already exists')) {
+      console.log(`📁 Cloudinary folder already exists: ${folderPath}`);
+    } else {
+      console.log(`⚠️ Cloudinary folder note: ${error.message}`);
     }
   }
 }
@@ -110,9 +113,7 @@ router.post("/enroll", upload, async (req, res) => {
 
       studentLRN = lrn;
 
-       if (lrn) {
-      await ensureCloudinaryFolder(lrn, lastname);
-    }
+       await ensureCloudinaryFolder(lrn, lastname);
 
       // Validate required fields
       if (!lrn || !email || !firstname || !lastname || !yearLevel || !strand) {
@@ -364,6 +365,7 @@ router.post("/enroll", upload, async (req, res) => {
 });
 
 export default router;
+
 
 
 
