@@ -3,59 +3,31 @@ import multer from "multer";
 import bcrypt from "bcrypt";
 import db from "../config/db.js";
 import { sendEnrollmentEmail } from "../mailer/emailService.js";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
 import cloudinary from "../config/cloudinary.js";
 
 const router = express.Router();
 
 /* ===========================================================
-   🗂️ CLOUDINARY FOLDER CREATION FUNCTION
+   📤 CLOUDINARY STORAGE CONFIGURATION
    =========================================================== */
-async function ensureCloudinaryFolder(lrn, lastname) {
-  if (!lrn) {
-    console.log('⚠️ No LRN provided for folder creation');
-    return false;
-  }
+const documentStorage = new CloudinaryStorage({
+  cloudinary,
+  params: async (req, file) => {
+    const { lrn, lastname } = req.body;
+    const folderPath = `document/${lrn} ${lastname?.toUpperCase()}`;
+    const fileLabel = file.fieldname; 
 
-  const folderPath = `documents/${lrn}_${lastname?.toUpperCase() || 'STUDENT'}`;
-  console.log(`🔄 Attempting to create Cloudinary folder: ${folderPath}`);
-  
-  try {
-    // Upload a tiny 1x1 transparent PNG to force folder creation
-    const transparentPixel = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-    
-    const result = await cloudinary.uploader.upload(
-      `data:image/png;base64,${transparentPixel}`,
-      {
-        public_id: 'folder_placeholder',
-        folder: folderPath,
-        overwrite: false,
-        resource_type: 'image'
-      }
-    );
-    
-    console.log(`✅ Cloudinary folder CREATED SUCCESSFULLY: ${folderPath}`);
-    console.log(`📁 Folder URL: ${result.secure_url}`);
-    return true;
-  } catch (error) {
-    if (error.message.includes('already exists')) {
-      console.log(`📁 Cloudinary folder already exists: ${folderPath}`);
-      return true;
-    } else {
-      console.error(`❌ Cloudinary folder creation FAILED:`, error.message);
-      return false;
-    }
-  }
-}
+    return {
+      folder: folderPath,
+      format: file.mimetype.split("/")[1] || "jpg",
+      public_id: fileLabel, 
+      transformation: [{ quality: "auto", fetch_format: "auto" }],
+    };
+  },
+});
 
-/* ===========================================================
-   📤 MULTER CONFIGURATION - SIMPLE MEMORY STORAGE
-   =========================================================== */
-const upload = multer({ 
-  storage: multer.memoryStorage(), // Use memory storage
-  fileFilter: (req, file, cb) => {
-    cb(null, true);
-  }
-}).fields([
+const upload = multer({ storage: documentStorage }).fields([
   { name: "birth_cert", maxCount: 1 },
   { name: "form137", maxCount: 1 },
   { name: "good_moral", maxCount: 1 },
@@ -66,50 +38,10 @@ const upload = multer({
 ]);
 
 /* ===========================================================
-   📁 CLOUDINARY FILE UPLOAD FUNCTION
-   =========================================================== */
-async function uploadFileToCloudinary(file, lrn, lastname, fieldname) {
-  if (!file) return null;
-  
-  const folderPath = `documents/${lrn}_${lastname?.toUpperCase() || 'STUDENT'}`;
-  
-  return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        folder: folderPath,
-        public_id: fieldname,
-        transformation: [{ quality: "auto", fetch_format: "auto" }],
-        resource_type: 'auto'
-      },
-      (error, result) => {
-        if (error) {
-          console.error(`❌ Cloudinary upload failed for ${fieldname}:`, error);
-          resolve(null);
-        } else {
-          console.log(`✅ File uploaded to Cloudinary: ${fieldname}`);
-          resolve(result.secure_url);
-        }
-      }
-    );
-    
-    uploadStream.end(file.buffer);
-  });
-}
-
-/* ===========================================================
-   🎓 ENROLLMENT ROUTE - COMPLETE FIX
+   🎓 ENROLLMENT ROUTE - FIXED FOR YOUR DATABASE SCHEMA
    =========================================================== */
 router.post("/enroll", upload, async (req, res) => {
   const conn = await db.getConnection();
-  
-  // 🎯 EXTENSIVE DEBUG LOGGING
-  console.log("=== ENROLLMENT REQUEST STARTED ===");
-  console.log("Student Type:", req.body.student_type);
-  console.log("LRN:", req.body.lrn);
-  console.log("Lastname:", req.body.lastname);
-  console.log("Has Files:", !!req.files);
-  console.log("Files:", req.files);
-
   const { student_type } = req.body;
 
   if (!student_type) {
@@ -129,31 +61,22 @@ router.post("/enroll", upload, async (req, res) => {
         nationality, birthdate, birth_province, birth_municipality, religion, 
         lot_blk, street, barangay, municipality, province, zipcode, 
         strand, phone, last_school, yearLevel,
+        // Parent/Guardian Information
         fathers_lastname, fathers_firstname, fathers_middlename, fathers_contact,
         mothers_lastname, mothers_firstname, mothers_middlename, mothers_contact,
         guardian_lastname, guardian_firstname, guardian_middlename, guardian_contact,
+        // IP and 4Ps Information
         ip_community, ip_specify, fourps_beneficiary, fourps_id
       } = req.body;
 
       studentLRN = lrn;
 
-      // ✅ FORCE CLOUDINARY FOLDER CREATION (ALWAYS CALL THIS)
-      console.log("🔄 FORCING CLOUDINARY FOLDER CREATION...");
-      const folderCreated = await ensureCloudinaryFolder(lrn, lastname);
-      
-      if (folderCreated) {
-        console.log("🎉 SUCCESS: Cloudinary folder creation completed!");
-      } else {
-        console.log("⚠️ WARNING: Cloudinary folder may not have been created");
-      }
-
       // Validate required fields
       if (!lrn || !email || !firstname || !lastname || !yearLevel || !strand) {
-        await conn.rollback();
         conn.release();
         return res.status(400).json({ 
           success: false, 
-          message: "Missing required fields." 
+          message: "Missing required fields: LRN, email, firstname, lastname, yearLevel, or strand." 
         });
       }
 
@@ -163,7 +86,6 @@ router.post("/enroll", upload, async (req, res) => {
         [lrn, email]
       );
       if (exists.length > 0) {
-        await conn.rollback();
         conn.release();
         return res.status(400).json({ 
           success: false, 
@@ -182,7 +104,7 @@ router.post("/enroll", upload, async (req, res) => {
       const fourpsBeneficiary = fourps_beneficiary === "on" ? "Yes" : "No";
       const fourpsIdValue = fourps_beneficiary === "on" ? fourps_id : null;
 
-      // 🧍 Insert student details
+      // 🧍 Insert student details - FIXED FOR YOUR SCHEMA
       await conn.query(
         `INSERT INTO student_details 
           (LRN, firstname, lastname, middlename, suffix, age, sex, status, nationality, birthdate,
@@ -198,83 +120,16 @@ router.post("/enroll", upload, async (req, res) => {
       );
 
       /* ===========================================================
-         📎 UPLOAD FILES TO CLOUDINARY (IF ANY EXIST)
+         📎 Handle Cloudinary URLs - FIXED FOR YOUR SCHEMA
          =========================================================== */
-      let birthCert = null;
-      let form137 = null;
-      let goodMoral = null;
-      let reportCard = null;
-      let picture = null;
-      let transcriptRecords = null;
-      let honorableDismissal = null;
+      const birthCert = req.files["birth_cert"]?.[0]?.path || null;
+      const form137 = req.files["form137"]?.[0]?.path || null;
+      const goodMoral = req.files["good_moral"]?.[0]?.path || null;
+      const reportCard = req.files["report_card"]?.[0]?.path || null;
+      const picture = req.files["picture"]?.[0]?.path || null;
+      const transcriptRecords = req.files["transcript_records"]?.[0]?.path || null;
+      const honorableDismissal = req.files["honorable_dismissal"]?.[0]?.path || null;
 
-      // Upload files if they exist
-      if (req.files) {
-        console.log(`📁 Uploading ${Object.keys(req.files).length} files to Cloudinary...`);
-        
-        const uploadPromises = [];
-        
-        if (req.files["birth_cert"]) {
-          uploadPromises.push(
-            uploadFileToCloudinary(req.files["birth_cert"][0], lrn, lastname, "birth_cert")
-              .then(url => { birthCert = url; })
-          );
-        }
-        
-        if (req.files["form137"]) {
-          uploadPromises.push(
-            uploadFileToCloudinary(req.files["form137"][0], lrn, lastname, "form137")
-              .then(url => { form137 = url; })
-          );
-        }
-        
-        if (req.files["good_moral"]) {
-          uploadPromises.push(
-            uploadFileToCloudinary(req.files["good_moral"][0], lrn, lastname, "good_moral")
-              .then(url => { goodMoral = url; })
-          );
-        }
-        
-        if (req.files["report_card"]) {
-          uploadPromises.push(
-            uploadFileToCloudinary(req.files["report_card"][0], lrn, lastname, "report_card")
-              .then(url => { reportCard = url; })
-          );
-        }
-        
-        if (req.files["picture"]) {
-          uploadPromises.push(
-            uploadFileToCloudinary(req.files["picture"][0], lrn, lastname, "picture")
-              .then(url => { picture = url; })
-          );
-        }
-        
-        if (req.files["transcript_records"]) {
-          uploadPromises.push(
-            uploadFileToCloudinary(req.files["transcript_records"][0], lrn, lastname, "transcript_records")
-              .then(url => { transcriptRecords = url; })
-          );
-        }
-        
-        if (req.files["honorable_dismissal"]) {
-          uploadPromises.push(
-            uploadFileToCloudinary(req.files["honorable_dismissal"][0], lrn, lastname, "honorable_dismissal")
-              .then(url => { honorableDismissal = url; })
-          );
-        }
-
-        // Wait for all uploads to complete
-        if (uploadPromises.length > 0) {
-          await Promise.all(uploadPromises);
-          console.log("✅ All file uploads completed");
-        } else {
-          console.log("ℹ️ No files to upload");
-        }
-      } else {
-        console.log("ℹ️ No files were uploaded by user");
-      }
-
-      // Insert document records (URLs will be null if no files uploaded)
       await conn.query(
         `INSERT INTO student_documents 
          (LRN, birth_cert, form137, good_moral, report_card, picture, transcript_records, honorable_dismissal)
@@ -282,7 +137,7 @@ router.post("/enroll", upload, async (req, res) => {
         [lrn, birthCert, form137, goodMoral, reportCard, picture, transcriptRecords, honorableDismissal]
       );
 
-      // 👪 Parent/Guardian details
+      // 👪 Parent/Guardian details - FIXED FOR YOUR SCHEMA
       const fathersName = `${fathers_firstname || ''} ${fathers_middlename || ''} ${fathers_lastname || ''}`.trim();
       const mothersName = `${mothers_firstname || ''} ${mothers_middlename || ''} ${mothers_lastname || ''}`.trim();
       const guardianName = `${guardian_firstname || ''} ${guardian_middlename || ''} ${guardian_lastname || ''}`.trim();
@@ -316,7 +171,7 @@ router.post("/enroll", upload, async (req, res) => {
       const nextYear = currentYear + 1;
       const school_year = `${currentYear}-${nextYear}`;
       
-      // Insert into student_enrollment
+      // Insert into student_enrollment - FIXED FOR YOUR SCHEMA
       await conn.query(
         `INSERT INTO student_enrollments 
         (LRN, school_year, semester, status, grade_slip, rejection_reason, created_at)
@@ -335,7 +190,6 @@ router.post("/enroll", upload, async (req, res) => {
       studentLRN = returnee_lrn;
 
       if (!returnee_lrn || !returnee_email) {
-        await conn.rollback();
         conn.release();
         return res.status(400).json({ 
           success: false, 
@@ -350,7 +204,6 @@ router.post("/enroll", upload, async (req, res) => {
       );
 
       if (existingStudent.length === 0) {
-        await conn.rollback();
         conn.release();
         return res.status(400).json({ 
           success: false, 
@@ -384,7 +237,6 @@ router.post("/enroll", upload, async (req, res) => {
 
     // ✅ Commit Transaction
     await conn.commit();
-    console.log("✅ Database transaction committed successfully");
 
     /* ===========================================================
        📧 Send Enrollment Email
