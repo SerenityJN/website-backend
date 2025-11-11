@@ -15,19 +15,24 @@ const documentStorage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => {
     const { lrn, lastname } = req.body;
-    const folderPath = `document/${lrn} ${lastname?.toUpperCase()}`;
-    const fileLabel = file.fieldname; 
+    const folderPath = `documents/${lrn}_${lastname?.toUpperCase() || 'STUDENT'}`;
+    const fileLabel = file.fieldname;
 
     return {
       folder: folderPath,
       format: file.mimetype.split("/")[1] || "jpg",
-      public_id: fileLabel, 
+      public_id: fileLabel,
       transformation: [{ quality: "auto", fetch_format: "auto" }],
     };
   },
 });
 
-const upload = multer({ storage: documentStorage }).fields([
+const upload = multer({ 
+  storage: documentStorage,
+  fileFilter: (req, file, cb) => {
+    cb(null, true);
+  }
+}).fields([
   { name: "birth_cert", maxCount: 1 },
   { name: "form137", maxCount: 1 },
   { name: "good_moral", maxCount: 1 },
@@ -36,6 +41,38 @@ const upload = multer({ storage: documentStorage }).fields([
   { name: "transcript_records", maxCount: 1 },
   { name: "honorable_dismissal", maxCount: 1 },
 ]);
+
+/* ===========================================================
+   🗂️ CLOUDINARY FOLDER CREATION FUNCTION
+   =========================================================== */
+async function ensureCloudinaryFolder(lrn, lastname) {
+  if (!lrn) {
+    console.log('⚠️ No LRN provided for folder creation');
+    return;
+  }
+
+  const folderPath = `documents/${lrn}_${lastname?.toUpperCase() || 'STUDENT'}`;
+  
+  try {
+    // Create folder by uploading a tiny transparent SVG
+    await cloudinary.uploader.upload(
+      'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMSIgaGVpZ2h0PSIxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGZpbGw9InRyYW5zcGFyZW50Ii8+PC9zdmc+',
+      {
+        public_id: '.folder_placeholder',
+        folder: folderPath,
+        overwrite: false,
+        invalidate: false,
+        resource_type: 'image'
+      }
+    );
+    console.log(`✅ Cloudinary folder created: ${folderPath}`);
+  } catch (error) {
+    // Ignore "already exists" errors, log others
+    if (!error.message.includes('already exists')) {
+      console.warn(`⚠️ Cloudinary folder creation warning: ${error.message}`);
+    }
+  }
+}
 
 /* ===========================================================
    🎓 ENROLLMENT ROUTE - FIXED FOR YOUR DATABASE SCHEMA
@@ -53,6 +90,10 @@ router.post("/enroll", upload, async (req, res) => {
     await conn.beginTransaction();
     let reference = "";
     let studentLRN = "";
+
+   if (lrn) {
+      await ensureCloudinaryFolder(lrn, lastname);
+    }
 
     // Handle New Enrollee and Transferee
     if (student_type === "New Enrollee" || student_type === "Transferee") {
@@ -321,6 +362,7 @@ router.post("/enroll", upload, async (req, res) => {
 });
 
 export default router;
+
 
 
 
