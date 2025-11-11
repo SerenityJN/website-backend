@@ -3,44 +3,9 @@ import multer from "multer";
 import bcrypt from "bcrypt";
 import db from "../config/db.js";
 import { sendEnrollmentEmail } from "../mailer/emailService.js";
-import { CloudinaryStorage } from "multer-storage-cloudinary";
 import cloudinary from "../config/cloudinary.js";
 
 const router = express.Router();
-
-/* ===========================================================
-   📤 CLOUDINARY STORAGE CONFIGURATION
-   =========================================================== */
-const documentStorage = new CloudinaryStorage({
-  cloudinary,
-  params: async (req, file) => {
-    const { lrn, lastname } = req.body;
-    const folderPath = `documents/${lrn}_${lastname?.toUpperCase() || 'STUDENT'}`;
-    const fileLabel = file.fieldname;
-
-    return {
-      folder: folderPath,
-      format: file.mimetype.split("/")[1] || "jpg",
-      public_id: fileLabel,
-      transformation: [{ quality: "auto", fetch_format: "auto" }],
-    };
-  },
-});
-
-const upload = multer({ 
-  storage: documentStorage,
-  fileFilter: (req, file, cb) => {
-    cb(null, true);
-  }
-}).fields([
-  { name: "birth_cert", maxCount: 1 },
-  { name: "form137", maxCount: 1 },
-  { name: "good_moral", maxCount: 1 },
-  { name: "report_card", maxCount: 1 },
-  { name: "picture", maxCount: 1 },
-  { name: "transcript_records", maxCount: 1 },
-  { name: "honorable_dismissal", maxCount: 1 },
-]);
 
 /* ===========================================================
    🗂️ CLOUDINARY FOLDER CREATION FUNCTION
@@ -78,11 +43,66 @@ async function ensureCloudinaryFolder(lrn, lastname) {
 }
 
 /* ===========================================================
-   🎓 ENROLLMENT ROUTE - FIXED FOR YOUR DATABASE SCHEMA
+   📁 CLOUDINARY FILE UPLOAD FUNCTION
+   =========================================================== */
+async function uploadFileToCloudinary(file, lrn, lastname, fieldname) {
+  if (!file) return null;
+  
+  const folderPath = `documents/${lrn}_${lastname?.toUpperCase() || 'STUDENT'}`;
+  
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: folderPath,
+        public_id: fieldname,
+        transformation: [{ quality: "auto", fetch_format: "auto" }],
+        resource_type: 'auto'
+      },
+      (error, result) => {
+        if (error) {
+          console.error(`❌ Cloudinary upload failed for ${fieldname}:`, error);
+          resolve(null);
+        } else {
+          console.log(`✅ File uploaded to Cloudinary: ${fieldname}`);
+          resolve(result.secure_url);
+        }
+      }
+    );
+    
+    uploadStream.end(file.buffer);
+  });
+}
+
+/* ===========================================================
+   📤 MULTER CONFIGURATION - USE MEMORY STORAGE
+   =========================================================== */
+const upload = multer({ 
+  storage: multer.memoryStorage(), // Use memory storage instead of CloudinaryStorage
+  fileFilter: (req, file, cb) => {
+    cb(null, true);
+  }
+}).fields([
+  { name: "birth_cert", maxCount: 1 },
+  { name: "form137", maxCount: 1 },
+  { name: "good_moral", maxCount: 1 },
+  { name: "report_card", maxCount: 1 },
+  { name: "picture", maxCount: 1 },
+  { name: "transcript_records", maxCount: 1 },
+  { name: "honorable_dismissal", maxCount: 1 },
+]);
+
+/* ===========================================================
+   🎓 ENROLLMENT ROUTE - FIXED
    =========================================================== */
 router.post("/enroll", upload, async (req, res) => {
   const conn = await db.getConnection();
   const { student_type } = req.body;
+
+  // 🎯 DEBUG LOG
+  console.log("=== ENROLLMENT REQUEST ===");
+  console.log("Student Type:", student_type);
+  console.log("Has Files:", !!req.files);
+  console.log("Request Body:", req.body);
 
   if (!student_type) {
     conn.release();
@@ -94,8 +114,6 @@ router.post("/enroll", upload, async (req, res) => {
     let reference = "";
     let studentLRN = "";
 
-   
-
     // Handle New Enrollee and Transferee
     if (student_type === "New Enrollee" || student_type === "Transferee") {
       const {
@@ -103,24 +121,25 @@ router.post("/enroll", upload, async (req, res) => {
         nationality, birthdate, birth_province, birth_municipality, religion, 
         lot_blk, street, barangay, municipality, province, zipcode, 
         strand, phone, last_school, yearLevel,
-        // Parent/Guardian Information
         fathers_lastname, fathers_firstname, fathers_middlename, fathers_contact,
         mothers_lastname, mothers_firstname, mothers_middlename, mothers_contact,
         guardian_lastname, guardian_firstname, guardian_middlename, guardian_contact,
-        // IP and 4Ps Information
         ip_community, ip_specify, fourps_beneficiary, fourps_id
       } = req.body;
 
       studentLRN = lrn;
 
-       await ensureCloudinaryFolder(lrn, lastname);
+      // ✅ ALWAYS CREATE CLOUDINARY FOLDER (EVEN WITH NO FILES)
+      console.log("🔄 Creating Cloudinary folder...");
+      await ensureCloudinaryFolder(lrn, lastname);
 
       // Validate required fields
       if (!lrn || !email || !firstname || !lastname || !yearLevel || !strand) {
+        await conn.rollback();
         conn.release();
         return res.status(400).json({ 
           success: false, 
-          message: "Missing required fields: LRN, email, firstname, lastname, yearLevel, or strand." 
+          message: "Missing required fields." 
         });
       }
 
@@ -130,6 +149,7 @@ router.post("/enroll", upload, async (req, res) => {
         [lrn, email]
       );
       if (exists.length > 0) {
+        await conn.rollback();
         conn.release();
         return res.status(400).json({ 
           success: false, 
@@ -148,7 +168,7 @@ router.post("/enroll", upload, async (req, res) => {
       const fourpsBeneficiary = fourps_beneficiary === "on" ? "Yes" : "No";
       const fourpsIdValue = fourps_beneficiary === "on" ? fourps_id : null;
 
-      // 🧍 Insert student details - FIXED FOR YOUR SCHEMA
+      // 🧍 Insert student details
       await conn.query(
         `INSERT INTO student_details 
           (LRN, firstname, lastname, middlename, suffix, age, sex, status, nationality, birthdate,
@@ -164,16 +184,77 @@ router.post("/enroll", upload, async (req, res) => {
       );
 
       /* ===========================================================
-         📎 Handle Cloudinary URLs - FIXED FOR YOUR SCHEMA
+         📎 UPLOAD FILES TO CLOUDINARY (IF ANY EXIST)
          =========================================================== */
-      const birthCert = req.files["birth_cert"]?.[0]?.path || null;
-      const form137 = req.files["form137"]?.[0]?.path || null;
-      const goodMoral = req.files["good_moral"]?.[0]?.path || null;
-      const reportCard = req.files["report_card"]?.[0]?.path || null;
-      const picture = req.files["picture"]?.[0]?.path || null;
-      const transcriptRecords = req.files["transcript_records"]?.[0]?.path || null;
-      const honorableDismissal = req.files["honorable_dismissal"]?.[0]?.path || null;
+      let birthCert = null;
+      let form137 = null;
+      let goodMoral = null;
+      let reportCard = null;
+      let picture = null;
+      let transcriptRecords = null;
+      let honorableDismissal = null;
 
+      // Upload files if they exist
+      if (req.files) {
+        const uploadPromises = [];
+        
+        if (req.files["birth_cert"]) {
+          uploadPromises.push(
+            uploadFileToCloudinary(req.files["birth_cert"][0], lrn, lastname, "birth_cert")
+              .then(url => { birthCert = url; })
+          );
+        }
+        
+        if (req.files["form137"]) {
+          uploadPromises.push(
+            uploadFileToCloudinary(req.files["form137"][0], lrn, lastname, "form137")
+              .then(url => { form137 = url; })
+          );
+        }
+        
+        if (req.files["good_moral"]) {
+          uploadPromises.push(
+            uploadFileToCloudinary(req.files["good_moral"][0], lrn, lastname, "good_moral")
+              .then(url => { goodMoral = url; })
+          );
+        }
+        
+        if (req.files["report_card"]) {
+          uploadPromises.push(
+            uploadFileToCloudinary(req.files["report_card"][0], lrn, lastname, "report_card")
+              .then(url => { reportCard = url; })
+          );
+        }
+        
+        if (req.files["picture"]) {
+          uploadPromises.push(
+            uploadFileToCloudinary(req.files["picture"][0], lrn, lastname, "picture")
+              .then(url => { picture = url; })
+          );
+        }
+        
+        if (req.files["transcript_records"]) {
+          uploadPromises.push(
+            uploadFileToCloudinary(req.files["transcript_records"][0], lrn, lastname, "transcript_records")
+              .then(url => { transcriptRecords = url; })
+          );
+        }
+        
+        if (req.files["honorable_dismissal"]) {
+          uploadPromises.push(
+            uploadFileToCloudinary(req.files["honorable_dismissal"][0], lrn, lastname, "honorable_dismissal")
+              .then(url => { honorableDismissal = url; })
+          );
+        }
+
+        // Wait for all uploads to complete
+        if (uploadPromises.length > 0) {
+          await Promise.all(uploadPromises);
+          console.log("✅ All file uploads completed");
+        }
+      }
+
+      // Insert document records (URLs will be null if no files uploaded)
       await conn.query(
         `INSERT INTO student_documents 
          (LRN, birth_cert, form137, good_moral, report_card, picture, transcript_records, honorable_dismissal)
@@ -181,7 +262,7 @@ router.post("/enroll", upload, async (req, res) => {
         [lrn, birthCert, form137, goodMoral, reportCard, picture, transcriptRecords, honorableDismissal]
       );
 
-      // 👪 Parent/Guardian details - FIXED FOR YOUR SCHEMA
+      // 👪 Parent/Guardian details
       const fathersName = `${fathers_firstname || ''} ${fathers_middlename || ''} ${fathers_lastname || ''}`.trim();
       const mothersName = `${mothers_firstname || ''} ${mothers_middlename || ''} ${mothers_lastname || ''}`.trim();
       const guardianName = `${guardian_firstname || ''} ${guardian_middlename || ''} ${guardian_lastname || ''}`.trim();
@@ -215,7 +296,7 @@ router.post("/enroll", upload, async (req, res) => {
       const nextYear = currentYear + 1;
       const school_year = `${currentYear}-${nextYear}`;
       
-      // Insert into student_enrollment - FIXED FOR YOUR SCHEMA
+      // Insert into student_enrollment
       await conn.query(
         `INSERT INTO student_enrollments 
         (LRN, school_year, semester, status, grade_slip, rejection_reason, created_at)
@@ -234,6 +315,7 @@ router.post("/enroll", upload, async (req, res) => {
       studentLRN = returnee_lrn;
 
       if (!returnee_lrn || !returnee_email) {
+        await conn.rollback();
         conn.release();
         return res.status(400).json({ 
           success: false, 
@@ -248,6 +330,7 @@ router.post("/enroll", upload, async (req, res) => {
       );
 
       if (existingStudent.length === 0) {
+        await conn.rollback();
         conn.release();
         return res.status(400).json({ 
           success: false, 
@@ -365,10 +448,3 @@ router.post("/enroll", upload, async (req, res) => {
 });
 
 export default router;
-
-
-
-
-
-
-
