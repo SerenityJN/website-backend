@@ -91,9 +91,7 @@ router.post("/enroll", upload, async (req, res) => {
     let reference = "";
     let studentLRN = "";
 
-   if (lrn) {
-      await ensureCloudinaryFolder(lrn, lastname);
-    }
+   
 
     // Handle New Enrollee and Transferee
     if (student_type === "New Enrollee" || student_type === "Transferee") {
@@ -111,6 +109,10 @@ router.post("/enroll", upload, async (req, res) => {
       } = req.body;
 
       studentLRN = lrn;
+
+       if (lrn) {
+      await ensureCloudinaryFolder(lrn, lastname);
+    }
 
       // Validate required fields
       if (!lrn || !email || !firstname || !lastname || !yearLevel || !strand) {
@@ -362,6 +364,7 @@ router.post("/enroll", upload, async (req, res) => {
 });
 
 export default router;
+
 
 
 
