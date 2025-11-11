@@ -13,34 +13,57 @@ const router = express.Router();
 async function ensureCloudinaryFolder(lrn, lastname) {
   if (!lrn) {
     console.log('⚠️ No LRN provided for folder creation');
-    return;
+    return false;
   }
 
   const folderPath = `documents/${lrn}_${lastname?.toUpperCase() || 'STUDENT'}`;
-  console.log(`🔄 Creating Cloudinary folder: ${folderPath}`);
+  console.log(`🔄 Attempting to create Cloudinary folder: ${folderPath}`);
   
   try {
     // Upload a tiny 1x1 transparent PNG to force folder creation
     const transparentPixel = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
     
-    await cloudinary.uploader.upload(
+    const result = await cloudinary.uploader.upload(
       `data:image/png;base64,${transparentPixel}`,
       {
         public_id: 'folder_placeholder',
         folder: folderPath,
-        overwrite: false
+        overwrite: false,
+        resource_type: 'image'
       }
     );
     
-    console.log(`✅ Cloudinary folder created: ${folderPath}`);
+    console.log(`✅ Cloudinary folder CREATED SUCCESSFULLY: ${folderPath}`);
+    console.log(`📁 Folder URL: ${result.secure_url}`);
+    return true;
   } catch (error) {
     if (error.message.includes('already exists')) {
       console.log(`📁 Cloudinary folder already exists: ${folderPath}`);
+      return true;
     } else {
-      console.log(`⚠️ Cloudinary folder note: ${error.message}`);
+      console.error(`❌ Cloudinary folder creation FAILED:`, error.message);
+      return false;
     }
   }
 }
+
+/* ===========================================================
+   📤 MULTER CONFIGURATION - SIMPLE MEMORY STORAGE
+   =========================================================== */
+const upload = multer({ 
+  storage: multer.memoryStorage(), // Use memory storage
+  fileFilter: (req, file, cb) => {
+    cb(null, true);
+  }
+}).fields([
+  { name: "birth_cert", maxCount: 1 },
+  { name: "form137", maxCount: 1 },
+  { name: "good_moral", maxCount: 1 },
+  { name: "report_card", maxCount: 1 },
+  { name: "picture", maxCount: 1 },
+  { name: "transcript_records", maxCount: 1 },
+  { name: "honorable_dismissal", maxCount: 1 },
+]);
 
 /* ===========================================================
    📁 CLOUDINARY FILE UPLOAD FUNCTION
@@ -74,35 +97,20 @@ async function uploadFileToCloudinary(file, lrn, lastname, fieldname) {
 }
 
 /* ===========================================================
-   📤 MULTER CONFIGURATION - USE MEMORY STORAGE
-   =========================================================== */
-const upload = multer({ 
-  storage: multer.memoryStorage(), // Use memory storage instead of CloudinaryStorage
-  fileFilter: (req, file, cb) => {
-    cb(null, true);
-  }
-}).fields([
-  { name: "birth_cert", maxCount: 1 },
-  { name: "form137", maxCount: 1 },
-  { name: "good_moral", maxCount: 1 },
-  { name: "report_card", maxCount: 1 },
-  { name: "picture", maxCount: 1 },
-  { name: "transcript_records", maxCount: 1 },
-  { name: "honorable_dismissal", maxCount: 1 },
-]);
-
-/* ===========================================================
-   🎓 ENROLLMENT ROUTE - FIXED
+   🎓 ENROLLMENT ROUTE - COMPLETE FIX
    =========================================================== */
 router.post("/enroll", upload, async (req, res) => {
   const conn = await db.getConnection();
-  const { student_type } = req.body;
-
-  // 🎯 DEBUG LOG
-  console.log("=== ENROLLMENT REQUEST ===");
-  console.log("Student Type:", student_type);
+  
+  // 🎯 EXTENSIVE DEBUG LOGGING
+  console.log("=== ENROLLMENT REQUEST STARTED ===");
+  console.log("Student Type:", req.body.student_type);
+  console.log("LRN:", req.body.lrn);
+  console.log("Lastname:", req.body.lastname);
   console.log("Has Files:", !!req.files);
-  console.log("Request Body:", req.body);
+  console.log("Files:", req.files);
+
+  const { student_type } = req.body;
 
   if (!student_type) {
     conn.release();
@@ -129,9 +137,15 @@ router.post("/enroll", upload, async (req, res) => {
 
       studentLRN = lrn;
 
-      // ✅ ALWAYS CREATE CLOUDINARY FOLDER (EVEN WITH NO FILES)
-      console.log("🔄 Creating Cloudinary folder...");
-      await ensureCloudinaryFolder(lrn, lastname);
+      // ✅ FORCE CLOUDINARY FOLDER CREATION (ALWAYS CALL THIS)
+      console.log("🔄 FORCING CLOUDINARY FOLDER CREATION...");
+      const folderCreated = await ensureCloudinaryFolder(lrn, lastname);
+      
+      if (folderCreated) {
+        console.log("🎉 SUCCESS: Cloudinary folder creation completed!");
+      } else {
+        console.log("⚠️ WARNING: Cloudinary folder may not have been created");
+      }
 
       // Validate required fields
       if (!lrn || !email || !firstname || !lastname || !yearLevel || !strand) {
@@ -196,6 +210,8 @@ router.post("/enroll", upload, async (req, res) => {
 
       // Upload files if they exist
       if (req.files) {
+        console.log(`📁 Uploading ${Object.keys(req.files).length} files to Cloudinary...`);
+        
         const uploadPromises = [];
         
         if (req.files["birth_cert"]) {
@@ -251,7 +267,11 @@ router.post("/enroll", upload, async (req, res) => {
         if (uploadPromises.length > 0) {
           await Promise.all(uploadPromises);
           console.log("✅ All file uploads completed");
+        } else {
+          console.log("ℹ️ No files to upload");
         }
+      } else {
+        console.log("ℹ️ No files were uploaded by user");
       }
 
       // Insert document records (URLs will be null if no files uploaded)
@@ -364,6 +384,7 @@ router.post("/enroll", upload, async (req, res) => {
 
     // ✅ Commit Transaction
     await conn.commit();
+    console.log("✅ Database transaction committed successfully");
 
     /* ===========================================================
        📧 Send Enrollment Email
