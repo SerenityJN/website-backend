@@ -109,7 +109,7 @@ router.post("/enroll", upload, async (req, res) => {
         `INSERT INTO student_details 
           (LRN, firstname, lastname, middlename, suffix, age, sex, status, nationality, birthdate,
            birth_province, birth_municipality, religion, cpnumber, home_add, email, yearlevel, strand, 
-           student_type, enrollment_status, rejection_reason, ip_community, ip_specify, fourps_beneficiary, fourps_id, created_at)
+           student_type, enrollment_status, reason, ip_community, ip_specify, fourps_beneficiary, fourps_id, created_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', NULL, ?, ?, ?, ?, NOW())`,
         [
           lrn, firstname, lastname, middlename, suffix, age, sex, status, nationality,
@@ -321,6 +321,7 @@ router.post("/enroll", upload, async (req, res) => {
 });
 
 export default router;
+
 
 
 
