@@ -36,10 +36,11 @@ if (!fs.existsSync(uploadDir)) {
 
 // Serve uploaded files statically from the '/uploads' route
 app.use("/uploads", express.static(uploadDir));
-app.use("/api/second-semester", secondSemesterRoutes);
+
 
 // Mount the student enrollment routes
 app.use("/api", studentRoutes);
+app.use("/api/second-semester", secondSemesterRoutes);
 
 app.use("/api", uploadRoutes);
 app.use(enrollmentRoutes);
@@ -49,4 +50,5 @@ app.get("/", (req, res) => res.send("✅ Enrollment backend is running."));
 
 app.listen(PORT, () =>
   console.log(`🚀 Server running at http://localhost:${PORT}`)
+
 );
