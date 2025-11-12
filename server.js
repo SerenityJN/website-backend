@@ -5,6 +5,7 @@ import fs from "fs";
 import studentRoutes from "./routes/studentRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import enrollmentRoutes from "./routes/enrollmentRoutes.js";
+import secondSemesterRoutes from "./routes/secondSemesterRoutes.js";
 
 
 const app = express();
@@ -35,6 +36,7 @@ if (!fs.existsSync(uploadDir)) {
 
 // Serve uploaded files statically from the '/uploads' route
 app.use("/uploads", express.static(uploadDir));
+app.use("/api/second-semester", secondSemesterRoutes);
 
 // Mount the student enrollment routes
 app.use("/api", studentRoutes);
