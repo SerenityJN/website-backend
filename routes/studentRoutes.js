@@ -323,7 +323,7 @@ router.post("/enroll", upload, async (req, res) => {
             <p style="margin-top: 20px;">You can track your enrollment status anytime using our official mobile app:</p>
 
             <p style="text-align: center; margin: 30px 0;">
-              <a href="https://your-mobile-app-link.com" 
+              <a href="https://expo.dev/artifacts/eas/n6nwRz1nQCeuyu2KBe2xUH.apk" 
                 style="background-color: #2563eb; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;">
                 📱 View Enrollment Status
               </a>
@@ -333,7 +333,7 @@ router.post("/enroll", upload, async (req, res) => {
             <p style="text-align: center;">
               <a href="https://play.google.com/store/apps/details?id=com.yourschool.app" 
                 style="color: #2563eb; text-decoration: none; font-weight: 500;">
-                👉 Download SVSHS Mobile App
+                👉 Download SVSHS Mobile App - COMING SOON
               </a>
             </p>
 
@@ -381,6 +381,7 @@ router.post("/enroll", upload, async (req, res) => {
 });
 
 export default router;
+
 
 
 
