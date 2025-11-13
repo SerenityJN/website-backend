@@ -300,7 +300,7 @@ router.post("/enroll", upload, async (req, res) => {
     try {
       await sendEnrollmentEmail(
       req.body.email,
-      "🎓 SVSHS Enrollment Confirmation",
+      "🎓 SV8BSHS Enrollment Confirmation",
       `
       <div style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f8fafc; padding: 20px;">
         <div style="max-width: 600px; background: #fff; margin: auto; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); overflow: hidden;">
@@ -311,7 +311,7 @@ router.post("/enroll", upload, async (req, res) => {
 
           <div style="padding: 25px;">
             <p>Dear <strong>${req.body.firstname} ${req.body.lastname}</strong>,</p>
-            <p>Thank you for enrolling at <strong>San Vicente Senior High School (SVSHS)</strong>! Your application has been successfully received.</p>
+            <p>Thank you for enrolling at <strong>Southville 8B Senior High School (SV8BSHS)</strong>! Your application has been successfully received.</p>
 
             <p style="margin-top: 20px; font-size: 1.1em;">
               <strong>Reference Number:</strong> 
@@ -342,7 +342,7 @@ router.post("/enroll", upload, async (req, res) => {
             <p style="font-size: 0.9em; color: #666;">
               This is an automated message — please do not reply.<br>
               If you have any questions, contact us at 
-              <a href="mailto:svshs.enrollment@gmail.com" style="color:#2563eb;">svshs.enrollment@gmail.com</a>.
+              <a href="mailto:342567@deped.gov.ph" style="color:#2563eb;">342567@deped.gov.ph</a>.
             </p>
 
             <p style="text-align:center; color:#aaa; font-size:0.8em; margin-top:20px;">
@@ -381,6 +381,7 @@ router.post("/enroll", upload, async (req, res) => {
 });
 
 export default router;
+
 
 
 
