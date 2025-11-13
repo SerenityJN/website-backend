@@ -266,16 +266,9 @@ router.post("/enroll", upload, async (req, res) => {
         ]
       );
 
-      // 🔢 Generate Reference Number
-      reference = "SV8BSHS-" + String(lrn).padStart(6, "0");
-
-      // Generate default password
-      const defaultPassword = lastname.substring(0, 4).toLowerCase() + lrn.slice(-4);
-      const hashedPassword = await bcrypt.hash(defaultPassword, 10);
-
       await conn.query(
         `INSERT INTO student_accounts (LRN, track_code, password) VALUES (?, ?, ?)`,
-        [lrn, reference, hashedPassword]
+        [lrn, reference, '']
       );
 
       const now = new Date(); 
@@ -326,3 +319,4 @@ router.post("/enroll", upload, async (req, res) => {
 });
 
 export default router;
+
