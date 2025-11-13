@@ -351,23 +351,25 @@ router.post("/enroll", upload, async (req, res) => {
     );
 
 
-    } catch (err) {
-    await conn.rollback();
-    console.error("❌ Enrollment Transaction Error:", err);
-    
-    let errorMessage = "An internal server error occurred.";
-    if (err.code === "ER_DUP_ENTRY") {
-      errorMessage = "LRN or Email already exists.";
-    } else if (err.code === "ER_NO_REFERENCED_ROW") {
-      errorMessage = "Referenced data not found.";
-    } else if (err.code === "ER_DATA_TOO_LONG") {
-      errorMessage = "Data too long for one or more fields.";
+    } catch (mailError) {
+      console.error("⚠️ Email send failed:", mailError);
+      // (Don’t rollback here, since enrollment was already successful)
     }
 
+    res.status(200).json({
+      success: true,
+      reference,
+      message: `Application submitted successfully. Reference: ${reference}`,
+    });
+
+  } catch (err) {
+    await conn.rollback();
+    console.error("❌ Enrollment Transaction Error:", err);
     res.status(500).json({
       success: false,
-      message: errorMessage,
-      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+      message: err.code === "ER_DUP_ENTRY"
+        ? "LRN or Email already exists."
+        : "An internal server error occurred.",
     });
   } finally {
     conn.release();
@@ -375,5 +377,6 @@ router.post("/enroll", upload, async (req, res) => {
 });
 
 export default router;
+
 
 
