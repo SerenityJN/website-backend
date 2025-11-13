@@ -144,6 +144,8 @@ router.post("/enroll", upload, async (req, res) => {
         });
       }
 
+      reference = "SV8BSHS-" + String(lrn).padStart(6, "0");
+
       // 🏠 Combine address fields
       const home_add = `${lot_blk || ''}, ${street || ''}, ${barangay || ''}, ${municipality || ''}, ${province || ''} ${zipcode || ''}`;
       
@@ -384,6 +386,7 @@ router.post("/enroll", upload, async (req, res) => {
 });
 
 export default router;
+
 
 
 
