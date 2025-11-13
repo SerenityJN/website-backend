@@ -293,9 +293,65 @@ router.post("/enroll", upload, async (req, res) => {
     // ✅ Commit Transaction
     await conn.commit();
 
-    // ... rest of your email and response code ...
+    try {
+      await sendEnrollmentEmail(
+      req.body.email,
+      "🎓 SVSHS Enrollment Confirmation",
+      `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f8fafc; padding: 20px;">
+        <div style="max-width: 600px; background: #fff; margin: auto; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); overflow: hidden;">
+          <div style="background: #1e40af; color: #fff; text-align: center; padding: 20px;">
+            <img src="https://commons.wikimedia.org/wiki/File:LEGO_logo.svg" alt="SVSHS Logo" style="height: 60px; margin-bottom: 10px;">
+            <h2 style="margin: 0;">SVSHS Enrollment Confirmation</h2>
+          </div>
 
-  } catch (err) {
+          <div style="padding: 25px;">
+            <p>Dear <strong>${req.body.firstname} ${req.body.lastname}</strong>,</p>
+            <p>Thank you for enrolling at <strong>San Vicente Senior High School (SVSHS)</strong>! Your application has been successfully received.</p>
+
+            <p style="margin-top: 20px; font-size: 1.1em;">
+              <strong>Reference Number:</strong> 
+              <span style="display: inline-block; background: #f1f5f9; padding: 8px 12px; border-radius: 6px; margin-top: 4px;">
+                ${reference}
+              </span>
+            </p>
+
+            <p style="margin-top: 20px;">You can track your enrollment status anytime using our official mobile app:</p>
+
+            <p style="text-align: center; margin: 30px 0;">
+              <a href="https://your-mobile-app-link.com" 
+                style="background-color: #2563eb; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;">
+                📱 View Enrollment Status
+              </a>
+            </p>
+
+            <p>Or download our mobile app directly from the Google Play Store:</p>
+            <p style="text-align: center;">
+              <a href="https://play.google.com/store/apps/details?id=com.yourschool.app" 
+                style="color: #2563eb; text-decoration: none; font-weight: 500;">
+                👉 Download SVSHS Mobile App
+              </a>
+            </p>
+
+            <hr style="border:none; border-top:1px solid #e5e7eb; margin:30px 0;">
+
+            <p style="font-size: 0.9em; color: #666;">
+              This is an automated message — please do not reply.<br>
+              If you have any questions, contact us at 
+              <a href="mailto:svshs.enrollment@gmail.com" style="color:#2563eb;">svshs.enrollment@gmail.com</a>.
+            </p>
+
+            <p style="text-align:center; color:#aaa; font-size:0.8em; margin-top:20px;">
+              © ${new Date().getFullYear()} San Vicente Senior High School. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </div>
+      `
+    );
+
+
+    } catch (err) {
     await conn.rollback();
     console.error("❌ Enrollment Transaction Error:", err);
     
@@ -319,4 +375,5 @@ router.post("/enroll", upload, async (req, res) => {
 });
 
 export default router;
+
 
