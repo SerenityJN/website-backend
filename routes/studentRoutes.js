@@ -290,6 +290,13 @@ router.post("/enroll", upload, async (req, res) => {
       // ... your existing returnee code ...
     }
 
+  reference = "SVSHS-" + String(lrn).padStart(6, "0");
+
+   await conn.query(
+     `INSERT INTO student_accounts (LRN, track_code) VALUES (?, ?)`,
+     [lrn, reference]
+   );
+
     // ✅ Commit Transaction
     await conn.commit();
 
@@ -377,6 +384,7 @@ router.post("/enroll", upload, async (req, res) => {
 });
 
 export default router;
+
 
 
 
