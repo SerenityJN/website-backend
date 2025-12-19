@@ -380,7 +380,26 @@ router.post("/enroll", upload, async (req, res) => {
   }
 });
 
+router.get("/strands", async (req, res) => {
+  try {
+    // Replace 'strands_table' with your actual table name
+    const [rows] = await db.query("SELECT strands FROM strands ORDER BY strand_code ASC");
+    
+    res.json({
+      success: true,
+      data: rows
+    });
+  } catch (err) {
+    console.error("Error fetching strands:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to fetch strands from database" 
+    });
+  }
+});
+
 export default router;
+
 
 
 
