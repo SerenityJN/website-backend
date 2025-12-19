@@ -383,7 +383,7 @@ router.post("/enroll", upload, async (req, res) => {
 router.get("/strands", async (req, res) => {
   try {
     // Replace 'strands_table' with your actual table name
-    const [rows] = await db.query("SELECT strand_name FROM strands ORDER BY strand_code ASC");
+     const [rows] = await db.query("SELECT strand_code, strand_name FROM strands ORDER BY strand_name ASC");
     
     res.json({
       success: true,
@@ -399,6 +399,7 @@ router.get("/strands", async (req, res) => {
 });
 
 export default router;
+
 
 
 
