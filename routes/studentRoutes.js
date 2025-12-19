@@ -366,7 +366,7 @@ router.post("/enroll", upload, async (req, res) => {
           <div style="max-width: 600px; background: #fff; margin: auto; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); overflow: hidden;">
             <div style="background: #1e40af; color: #fff; text-align: center; padding: 20px;">
               <img src="https://commons.wikimedia.org/wiki/File:LEGO_logo.svg" alt="SVSHS Logo" style="height: 60px; margin-bottom: 10px;">
-              <h2 style="margin: 0;">SVSHS Enrollment Confirmation</h2>
+              <h2 style="margin: 0;">SV8BSHS Enrollment Confirmation</h2>
             </div>
 
             <div style="padding: 25px;">
@@ -383,7 +383,7 @@ router.post("/enroll", upload, async (req, res) => {
               <p style="margin-top: 20px;">You can track your enrollment status anytime using our official mobile app:</p>
 
               <p style="text-align: center; margin: 30px 0;">
-                <a href="https://expo.dev/artifacts/eas/3KQaGvJumwTSH1kV8PWGtZ.apk" 
+                <a href="https://expo.dev/artifacts/eas/mVJUc8dzeB4ZrEFVia7wu8.apk" 
                   style="background-color: #2563eb; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;">
                   📱 View Enrollment Status
                 </a>
@@ -393,7 +393,7 @@ router.post("/enroll", upload, async (req, res) => {
               <p style="text-align: center;">
                 <a href="https://play.google.com/store/apps/details?id=com.yourschool.app" 
                   style="color: #2563eb; text-decoration: none; font-weight: 500;">
-                  👉 Download SVSHS Mobile App - COMING SOON
+                  👉 Download SV8BSHS Mobile App - COMING SOON
                 </a>
               </p>
 
@@ -459,4 +459,5 @@ router.get("/strands", async (req, res) => {
 });
 
 export default router;
+
 
