@@ -99,11 +99,9 @@ router.post("/enroll", upload, async (req, res) => {
   const conn = await db.getConnection();
   const { student_type } = req.body;
 
-  // 🎯 DEBUG LOG
   console.log("=== ENROLLMENT REQUEST ===");
   console.log("Student Type:", student_type);
   console.log("Has Files:", !!req.files);
-  console.log("Request Body:", req.body);
 
   if (!student_type) {
     conn.release();
@@ -114,7 +112,7 @@ router.post("/enroll", upload, async (req, res) => {
     await conn.beginTransaction();
     let reference = "";
     let studentLRN = "";
-    let studentLastName = ""; // Track lastname for email and Cloudinary
+    let studentLastName = "";
 
     // Handle New Enrollee and Transferee
     if (student_type === "New Enrollee" || student_type === "Transferee") {
@@ -132,37 +130,47 @@ router.post("/enroll", upload, async (req, res) => {
       studentLRN = lrn;
       studentLastName = lastname;
 
+     console.log("🔍 Starting duplicate checks...");
+      console.log("📋 Checking LRN:", lrn);
+      console.log("📧 Checking email:", email);
+
       // 🔍 DUPLICATE CHECK - BEFORE ANY INSERTS
-      const [existingLRN] = await conn.query(
-        "SELECT LRN FROM student_details WHERE LRN = ?",
+       const [existingLRN] = await conn.query(
+        "SELECT LRN, email FROM student_details WHERE LRN = ? LIMIT 1",
         [lrn]
       );
       
       if (existingLRN.length > 0) {
+        console.log("❌ Duplicate LRN found:", existingLRN[0]);
         await conn.rollback();
         conn.release();
         return res.status(409).json({
           success: false,
           message: "This Learner Reference Number (LRN) is already registered.",
-          duplicateField: "lrn"
+          duplicateField: "lrn",
+          existingData: existingLRN[0]
         });
       }
       
       // Check if email already exists
       const [existingEmail] = await conn.query(
-        "SELECT email FROM student_details WHERE email = ?",
+        "SELECT LRN, email FROM student_details WHERE LOWER(email) = LOWER(?) LIMIT 1",
         [email]
       );
       
       if (existingEmail.length > 0) {
+        console.log("❌ Duplicate email found:", existingEmail[0]);
         await conn.rollback();
         conn.release();
         return res.status(409).json({
           success: false,
-          message: "This email address is already registered.",
-          duplicateField: "email"
+          message: "This email address is already registered with LRN: " + existingEmail[0].LRN,
+          duplicateField: "email",
+          existingData: existingEmail[0]
         });
       }
+
+       console.log("✅ No duplicates found. Proceeding with enrollment...");
 
       // ✅ ALWAYS CREATE CLOUDINARY FOLDER
       console.log("🔄 Creating Cloudinary folder...");
@@ -174,7 +182,7 @@ router.post("/enroll", upload, async (req, res) => {
         conn.release();
         return res.status(400).json({ 
           success: false, 
-          message: "Missing required fields (LRN, email, name, year level, or strand)." 
+          message: "Missing required fields." 
         });
       }
 
@@ -451,3 +459,4 @@ router.get("/strands", async (req, res) => {
 });
 
 export default router;
+
