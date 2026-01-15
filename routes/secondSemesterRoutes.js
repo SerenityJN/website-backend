@@ -1,6 +1,6 @@
 import express from "express";
 import multer from "multer";
-import db from "../config/db.js";
+import db from "../config/db.js"; // This should be your 'pg' Pool instance
 import { sendEnrollmentEmail } from "../mailer/emailService.js";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import cloudinary from "../config/cloudinary.js";
@@ -30,19 +30,21 @@ const uploadGradeSlip = multer({
 }).single("grade_slip");
 
 /* ===========================================================
-   🎓 2ND SEMESTER ENROLLMENT ROUTE
+   🎓 2ND SEMESTER ENROLLMENT ROUTE - POSTGRES VERSION
    =========================================================== */
 router.post("/enroll-second-semester", uploadGradeSlip, async (req, res) => {
-  const conn = await db.getConnection();
+  // In pg, we must get a client from the pool for transactions
+  const client = await db.connect();
   
   try {
-    await conn.beginTransaction();
+    await client.query("BEGIN"); // Start Postgres Transaction
 
     const { lrn, firstname, lastname } = req.body;
     const gradeSlipUrl = req.file?.path || null;
 
     // 🔍 Validate required fields
     if (!lrn || !firstname || !lastname) {
+      client.release();
       return res.status(400).json({ 
         success: false, 
         message: "LRN, first name, and last name are required." 
@@ -50,47 +52,55 @@ router.post("/enroll-second-semester", uploadGradeSlip, async (req, res) => {
     }
 
     // 🔍 Verify student exists and is active
-    const [students] = await conn.query(
+    // MySQL: ? -> Postgres: $1, $2, etc. | MySQL: [students] -> Postgres: { rows }
+    const studentRes = await client.query(
       `SELECT * FROM student_details 
-       WHERE LRN = ? AND firstname = ? AND lastname = ? AND is_active = 1`,
+       WHERE LRN = $1 AND firstname = $2 AND lastname = $3 AND is_active = true`,
       [lrn, firstname, lastname]
     );
 
-    if (students.length === 0) {
+    if (studentRes.rows.length === 0) {
+      await client.query("ROLLBACK");
+      client.release();
       return res.status(404).json({
         success: false,
         message: "Student not found. Please check your information."
       });
     }
 
-    const student = students[0];
+    const student = studentRes.rows[0];
 
-    // 🔍 Check if already enrolled for 2nd semester
+    // 🔍 School Year Logic
     const currentYear = new Date().getFullYear();
     const nextYear = currentYear + 1;
     const school_year = `${currentYear}-${nextYear}`;
 
-    const [existingEnrollments] = await conn.query(
+    // 🔍 Check if already enrolled for 2nd semester
+    const existingCheck = await client.query(
       `SELECT * FROM student_enrollments 
-       WHERE LRN = ? AND semester = '2nd' AND school_year = ?`,
+       WHERE LRN = $1 AND semester = '2nd' AND school_year = $2`,
       [lrn, school_year]
     );
 
-    if (existingEnrollments.length > 0) {
+    if (existingCheck.rows.length > 0) {
+      await client.query("ROLLBACK");
+      client.release();
       return res.status(400).json({
         success: false,
         message: "You are already enrolled for 2nd semester."
       });
     }
 
-    // 🔍 Check if student completed 1st semester
-    const [firstSemester] = await conn.query(
+    // 🔍 Check if student completed 1st semester (status check is case-sensitive in Postgres)
+    const firstSemCheck = await client.query(
       `SELECT * FROM student_enrollments 
-       WHERE LRN = ? AND semester = '1st' AND school_year = ? AND status = 'approved'`,
+       WHERE LRN = $1 AND semester = '1st' AND school_year = $2 AND status = 'Approved'`,
       [lrn, school_year]
     );
 
-    if (firstSemester.length === 0) {
+    if (firstSemCheck.rows.length === 0) {
+      await client.query("ROLLBACK");
+      client.release();
       return res.status(400).json({
         success: false,
         message: "You must complete 1st semester before enrolling for 2nd semester."
@@ -98,23 +108,23 @@ router.post("/enroll-second-semester", uploadGradeSlip, async (req, res) => {
     }
 
     // 🎓 Create 2nd semester enrollment record
-    await conn.query(
+    await client.query(
       `INSERT INTO student_enrollments 
        (LRN, school_year, semester, status, grade_slip, enrollment_type, created_at) 
-       VALUES (?, ?, '2nd', 'pending', ?, 'continuing', NOW())`,
+       VALUES ($1, $2, '2nd', 'Pending', $3, 'Continuing', CURRENT_TIMESTAMP)`,
       [lrn, school_year, gradeSlipUrl]
     );
 
     // 📈 Update student year level if progressing
     if (student.yearlevel === 'Grade 11') {
-      await conn.query(
-        `UPDATE student_details SET yearlevel = 'Grade 12' WHERE LRN = ?`,
+      await client.query(
+        `UPDATE student_details SET yearlevel = 'Grade 12' WHERE LRN = $1`,
         [lrn]
       );
     }
 
     // ✅ Commit transaction
-    await conn.commit();
+    await client.query("COMMIT");
 
     // 📧 Send confirmation email
     try {
@@ -159,19 +169,19 @@ router.post("/enroll-second-semester", uploadGradeSlip, async (req, res) => {
         name: `${student.firstname} ${student.lastname}`,
         yearlevel: student.yearlevel === 'Grade 11' ? 'Grade 12' : student.yearlevel,
         strand: student.strand,
-        status: "pending"
+        status: "Pending"
       }
     });
 
   } catch (err) {
-    await conn.rollback();
+    await client.query("ROLLBACK");
     console.error("❌ 2nd Semester Enrollment Error:", err);
     res.status(500).json({
       success: false,
       message: "An internal server error occurred during enrollment."
     });
   } finally {
-    conn.release();
+    client.release(); // Important to release back to pool
   }
 });
 
